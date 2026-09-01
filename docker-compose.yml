@@ -1,0 +1,46 @@
+name: booking
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: booking-postgres
+    environment:
+      POSTGRES_DB: beauty_booking
+      POSTGRES_USER: booking_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-beauty123}
+      TZ: Africa/Casablanca
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking_user -d beauty_booking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    container_name: booking-keycloak
+    command: start-dev --http-port=8081 --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HEALTH_ENABLED: "true"
+      TZ: Africa/Casablanca
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      # L'image Keycloak ne contient ni curl ni wget : on ouvre une socket
+      # via /dev/tcp sur le port de management (KC_HEALTH_ENABLED).
+      # Les CRLF sont obligatoires, HTTP les exige.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  postgres_data:

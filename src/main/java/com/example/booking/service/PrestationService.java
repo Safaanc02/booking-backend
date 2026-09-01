@@ -51,6 +51,7 @@ public class PrestationService {
         Prestation prestation = Prestation.builder()
                 .nom(request.getNom())
                 .description(request.getDescription())
+                .categorie(request.getCategorie())
                 .prix(request.getPrix())
                 .dureeMinutes(request.getDureeMinutes())
                 .salon(salon)
@@ -64,6 +65,7 @@ public class PrestationService {
 
         existing.setNom(request.getNom());
         existing.setDescription(request.getDescription());
+        existing.setCategorie(request.getCategorie());
         existing.setPrix(request.getPrix());
         existing.setDureeMinutes(request.getDureeMinutes());
 
@@ -86,6 +88,7 @@ public class PrestationService {
                 .id(p.getId())
                 .nom(p.getNom())
                 .description(p.getDescription())
+                .categorie(p.getCategorie())
                 .prix(p.getPrix())
                 .dureeMinutes(p.getDureeMinutes())
                 .salonId(p.getSalon() != null ? p.getSalon().getId() : null)

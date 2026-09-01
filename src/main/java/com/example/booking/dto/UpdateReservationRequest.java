@@ -1,12 +1,11 @@
-// com.example.booking.dto.UpdateReservationRequest
 package com.example.booking.dto;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 
+import java.time.Instant;
+
+/** Déplacement d'un rendez-vous. Le changement de statut passe par une route dédiée. */
 public record UpdateReservationRequest(
-        @NotNull Long creneauId,
-        @NotNull
-        @Pattern(regexp = "PENDING|CONFIRMED|CANCELLED", message = "statut invalide")
-        String statut
+        @NotNull(message = "L'heure de début est obligatoire") Instant debut,
+        Long employeId
 ) {}

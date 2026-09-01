@@ -1,7 +1,13 @@
 package com.example.booking.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "users")
@@ -16,17 +22,30 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String keycloakId; // ID Keycloak (sub)
+    /** Claim "sub" du token. Immuable, contrairement au username. */
+    @Column(name = "keycloak_id", nullable = false, unique = true, length = 64)
+    private String keycloakId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 100)
     private String username;
 
+    @Column(length = 180)
     private String email;
+
+    @Column(name = "full_name", length = 150)
     private String fullName;
 
-    @Column(nullable = false)
-    private String role; // ADMIN / PROPRIETAIRE / CLIENT
+    @Column(length = 20)
+    private String telephone;
 
-    private boolean enabled;
+    /** ADMIN, PRO ou CLIENT — voir com.example.booking.config.Roles. */
+    @Column(nullable = false, length = 20)
+    private String role;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean enabled = true;
+
+    @Column(name = "cree_le", nullable = false, insertable = false, updatable = false)
+    private Instant creeLe;
 }

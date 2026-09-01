@@ -20,6 +20,9 @@ public class PrestationRequest {
     @Size(max = 500, message = "Description trop longue (500 caractères max)")
     private String description;
 
+    @Size(max = 60, message = "Catégorie trop longue")
+    private String categorie;
+
     /** Prix en dirhams (MAD). */
     @NotNull(message = "Le prix est obligatoire")
     @DecimalMin(value = "0.0", inclusive = false, message = "Le prix doit être supérieur à 0")

@@ -1,9 +1,19 @@
-// src/main/java/com/example/booking/dto/reservation/ReservationResponse.java
 package com.example.booking.dto;
+
+import java.math.BigDecimal;
+import java.time.Instant;
 
 public record ReservationResponse(
         Long id,
-        String clientUsername,
-        Long creneauId,
-        String statut
+        Long salonId,
+        String salonNom,
+        Long prestationId,
+        String prestation,
+        Long employeId,
+        String employe,
+        Instant debut,
+        Instant fin,
+        String statut,
+        BigDecimal prix,
+        String noteClient
 ) {}

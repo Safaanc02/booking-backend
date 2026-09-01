@@ -15,6 +15,7 @@ public class PrestationResponse {
     private Long id;
     private String nom;
     private String description;
+    private String categorie;
     /** Prix en dirhams (MAD). */
     private BigDecimal prix;
     private Integer dureeMinutes;

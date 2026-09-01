@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-/** Fiche salon complète : le salon et son catalogue, en une seule requête. */
+/** Fiche complète : le salon, son catalogue et son équipe, en une requête. */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,9 +15,14 @@ import java.util.List;
 public class SalonDetailResponse {
     private Long id;
     private String nom;
+    private String description;
     private String adresse;
     private String ville;
+    private String quartier;
     private String telephone;
     private String email;
+    private String categorie;
+    private Integer delaiAnnulationHeures;
     private List<PrestationResponse> prestations;
+    private List<EmployeResponse> employes;
 }

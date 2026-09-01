@@ -66,6 +66,17 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.update(id, req));
     }
 
+    /**
+     * Annulation : le rendez-vous passe en ANNULEE_CLIENT et libère le créneau,
+     * sans disparaître de l'historique. La suppression pure reste réservée aux
+     * cas exceptionnels.
+     */
+    @PatchMapping("/{id}/annuler")
+    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
+    public ResponseEntity<ReservationResponse> annuler(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.annuler(id));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

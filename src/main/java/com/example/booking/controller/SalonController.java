@@ -31,9 +31,14 @@ public class SalonController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    /**
-     * 🔹 Récupérer un salon par ID (public)
-     */
+    /** Les salons du professionnel connecté. */
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('PRO','ADMIN')")
+    public ResponseEntity<java.util.List<SalonResponse>> mesSalons() {
+        return ResponseEntity.ok(salonService.mesSalons());
+    }
+
+    /** Fiche d'un salon par identifiant. */
     @GetMapping("/{id}")
     public ResponseEntity<SalonResponse> getSalonById(@PathVariable Long id) {
         return salonService.getSalonById(id)

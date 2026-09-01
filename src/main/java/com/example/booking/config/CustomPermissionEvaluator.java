@@ -1,9 +1,9 @@
 package com.example.booking.config;
 
-import com.example.booking.model.Creneau;
+import com.example.booking.model.Employe;
 import com.example.booking.model.Prestation;
 import com.example.booking.model.Salon;
-import com.example.booking.repository.CreneauRepository;
+import com.example.booking.repository.EmployeRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.SalonRepository;
 import org.springframework.security.access.PermissionEvaluator;
@@ -28,14 +28,14 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
 
     private final SalonRepository salonRepository;
     private final PrestationRepository prestationRepository;
-    private final CreneauRepository creneauRepository;
+    private final EmployeRepository employeRepository;
 
     public CustomPermissionEvaluator(SalonRepository salonRepository,
                                      PrestationRepository prestationRepository,
-                                     CreneauRepository creneauRepository) {
+                                     EmployeRepository employeRepository) {
         this.salonRepository = salonRepository;
         this.prestationRepository = prestationRepository;
-        this.creneauRepository = creneauRepository;
+        this.employeRepository = employeRepository;
     }
 
     /* ---------- Méthodes appelées depuis les @PreAuthorize ---------- */
@@ -59,13 +59,12 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
                 .orElse(false);
     }
 
-    /** Idem, via prestation -> salon. */
-    public boolean isOwnerCreneau(Long creneauId, Authentication authentication) {
-        if (creneauId == null) return false;
+    /** Idem, via le salon qui emploie ce praticien. */
+    public boolean isOwnerEmploye(Long employeId, Authentication authentication) {
+        if (employeId == null) return false;
         if (isAdmin(authentication)) return true;
-        return creneauRepository.findById(creneauId)
-                .map(Creneau::getPrestation)
-                .map(Prestation::getSalon)
+        return employeRepository.findById(employeId)
+                .map(Employe::getSalon)
                 .map(salon -> isOwner(salon, authentication))
                 .orElse(false);
     }
@@ -90,7 +89,7 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
         return switch (targetType.toLowerCase()) {
             case "salon"      -> isOwnerSalon(id, authentication);
             case "prestation" -> isOwnerPrestation(id, authentication);
-            case "creneau"    -> isOwnerCreneau(id, authentication);
+            case "employe"    -> isOwnerEmploye(id, authentication);
             default           -> false;
         };
     }

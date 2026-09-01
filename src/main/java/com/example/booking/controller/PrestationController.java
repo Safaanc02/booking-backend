@@ -2,7 +2,6 @@ package com.example.booking.controller;
 
 import com.example.booking.dto.PrestationRequest;
 import com.example.booking.dto.PrestationResponse;
-import com.example.booking.model.Prestation;
 import com.example.booking.service.PrestationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.List;
 
+/**
+ * Les réponses exposent des DTO, jamais l'entité Prestation : sérialiser
+ * l'entité ferait fuiter le salon complet — et sa liste de prestations — en
+ * cascade dans chaque réponse.
+ */
 @RestController
 @RequestMapping("/api/prestations")
 public class PrestationController {
@@ -22,27 +26,23 @@ public class PrestationController {
         this.prestationService = prestationService;
     }
 
-    /**
-     * 🔹 Récupérer toutes les prestations
-     */
     @GetMapping
-    public ResponseEntity<List<Prestation>> getAllPrestations() {
+    public ResponseEntity<List<PrestationResponse>> getAllPrestations() {
         return ResponseEntity.ok(prestationService.getAllPrestations());
     }
 
-    /**
-     * 🔹 Récupérer une prestation par ID
-     */
     @GetMapping("/{id}")
-    public ResponseEntity<Prestation> getPrestationById(@PathVariable Long id) {
+    public ResponseEntity<PrestationResponse> getPrestationById(@PathVariable Long id) {
         return ResponseEntity.ok(prestationService.getPrestationById(id));
     }
 
-    /**
-     * 🔹 Créer une prestation dans un salon (Admin ou propriétaire du salon)
-     */
+    @GetMapping("/salon/{salonId}")
+    public ResponseEntity<List<PrestationResponse>> getBySalon(@PathVariable Long salonId) {
+        return ResponseEntity.ok(prestationService.getBySalon(salonId));
+    }
+
     @PostMapping("/salon/{salonId}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
     public ResponseEntity<PrestationResponse> createPrestation(
             @PathVariable Long salonId,
             @Valid @RequestBody PrestationRequest request
@@ -51,23 +51,17 @@ public class PrestationController {
         return ResponseEntity.created(URI.create("/api/prestations/" + created.getId())).body(created);
     }
 
-    /**
-     * 🔹 Mettre à jour une prestation
-     */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerPrestation(#id, authentication)")
-    public ResponseEntity<Prestation> updatePrestation(
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerPrestation(#id, authentication)")
+    public ResponseEntity<PrestationResponse> updatePrestation(
             @PathVariable Long id,
             @Valid @RequestBody PrestationRequest request
     ) {
         return ResponseEntity.ok(prestationService.updatePrestation(id, request));
     }
 
-    /**
-     * 🔹 Supprimer une prestation
-     */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerPrestation(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerPrestation(#id, authentication)")
     public ResponseEntity<Void> deletePrestation(@PathVariable Long id) {
         prestationService.deletePrestation(id);
         return ResponseEntity.noContent().build();

@@ -1,55 +1,139 @@
 package com.example.booking.config;
 
+import com.example.booking.model.Creneau;
+import com.example.booking.model.Prestation;
 import com.example.booking.model.Salon;
+import com.example.booking.repository.CreneauRepository;
+import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.SalonRepository;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
-import java.util.Optional;
 
-@Component("permission") // important pour que SpEL "@permission" marche
+/**
+ * Évalue la propriété d'une ressource pour les @PreAuthorize.
+ *
+ * Exposé sous le nom "permission" pour les expressions SpEL du type :
+ *     @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#id, authentication)")
+ *
+ * La comparaison se fait sur le keycloakId (claim "sub" du JWT), jamais sur le
+ * username : celui-ci peut changer côté Keycloak, le sub est immuable.
+ */
+@Component("permission")
 public class CustomPermissionEvaluator implements PermissionEvaluator {
 
     private final SalonRepository salonRepository;
+    private final PrestationRepository prestationRepository;
+    private final CreneauRepository creneauRepository;
 
-    public CustomPermissionEvaluator(SalonRepository salonRepository) {
+    public CustomPermissionEvaluator(SalonRepository salonRepository,
+                                     PrestationRepository prestationRepository,
+                                     CreneauRepository creneauRepository) {
         this.salonRepository = salonRepository;
+        this.prestationRepository = prestationRepository;
+        this.creneauRepository = creneauRepository;
     }
+
+    /* ---------- Méthodes appelées depuis les @PreAuthorize ---------- */
+
+    /** L'appelant est-il admin, ou propriétaire de ce salon ? */
+    public boolean isOwnerSalon(Long salonId, Authentication authentication) {
+        if (salonId == null) return false;
+        if (isAdmin(authentication)) return true;
+        return salonRepository.findById(salonId)
+                .map(salon -> isOwner(salon, authentication))
+                .orElse(false);
+    }
+
+    /** Idem, via le salon qui porte la prestation. */
+    public boolean isOwnerPrestation(Long prestationId, Authentication authentication) {
+        if (prestationId == null) return false;
+        if (isAdmin(authentication)) return true;
+        return prestationRepository.findById(prestationId)
+                .map(Prestation::getSalon)
+                .map(salon -> isOwner(salon, authentication))
+                .orElse(false);
+    }
+
+    /** Idem, via prestation -> salon. */
+    public boolean isOwnerCreneau(Long creneauId, Authentication authentication) {
+        if (creneauId == null) return false;
+        if (isAdmin(authentication)) return true;
+        return creneauRepository.findById(creneauId)
+                .map(Creneau::getPrestation)
+                .map(Prestation::getSalon)
+                .map(salon -> isOwner(salon, authentication))
+                .orElse(false);
+    }
+
+    /* ---------- Contrat PermissionEvaluator ---------- */
 
     @Override
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
-        return false; // non utilisé dans notre cas
+        if (targetDomainObject instanceof Salon salon) {
+            return isOwner(salon, authentication);
+        }
+        return false;
     }
 
     @Override
     public boolean hasPermission(Authentication authentication, Serializable targetId, String targetType, Object permission) {
-        if (authentication == null || targetId == null || targetType == null) {
-            return false;
+        if (targetId == null || targetType == null) return false;
+
+        Long id = toId(targetId);
+        if (id == null) return false;
+
+        return switch (targetType.toLowerCase()) {
+            case "salon"      -> isOwnerSalon(id, authentication);
+            case "prestation" -> isOwnerPrestation(id, authentication);
+            case "creneau"    -> isOwnerCreneau(id, authentication);
+            default           -> false;
+        };
+    }
+
+    /* ---------- Helpers ---------- */
+
+    private boolean isOwner(Salon salon, Authentication authentication) {
+        if (salon == null || salon.getOwner() == null) return false;
+        String keycloakId = currentKeycloakId(authentication);
+        return keycloakId != null && keycloakId.equals(salon.getOwner().getKeycloakId());
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null) return false;
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(Roles.ROLE_ADMIN::equals);
+    }
+
+    private String currentKeycloakId(Authentication authentication) {
+        if (authentication == null) return null;
+        if (authentication.getPrincipal() instanceof Jwt jwt) {
+            return jwt.getClaimAsString("sub");
         }
+        return null;
+    }
 
-        if (targetType.equalsIgnoreCase("Salon")) {
-            Long salonId = (Long) targetId;
-            Optional<Salon> salonOpt = salonRepository.findById(salonId);
-
-            if (salonOpt.isEmpty()) return false;
-
-            Salon salon = salonOpt.get();
-            String username = authentication.getName();
-
-            // 🔹 Autorisé si ADMIN
-            boolean isAdmin = authentication.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch(role -> role.equals("ROLE_admin") || role.equals("ROLE_ADMIN"));
-
-            if (isAdmin) return true;
-
-            // 🔹 Autorisé si l'utilisateur est le propriétaire du salon
-            return salon.getOwner() != null && salon.getOwner().getUsername().equals(username);
+    /** Java 17 : pas de pattern matching dans switch, d'où le if/else. */
+    private Long toId(Serializable targetId) {
+        if (targetId instanceof Number) {
+            return ((Number) targetId).longValue();
         }
+        if (targetId instanceof String) {
+            return parseOrNull((String) targetId);
+        }
+        return null;
+    }
 
-        return false;
+    private Long parseOrNull(String s) {
+        try {
+            return Long.valueOf(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

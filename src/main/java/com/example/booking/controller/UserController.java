@@ -22,7 +22,7 @@ public class UserController {
      * 🔹 Liste des utilisateurs (Admin, Pro)
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('admin','pro')")
+    @PreAuthorize("hasAnyRole('ADMIN','PRO')")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
@@ -31,7 +31,7 @@ public class UserController {
      * 🔹 Récupérer un utilisateur par ID (Admin, Pro, Client)
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin','pro','client')")
+    @PreAuthorize("hasAnyRole('ADMIN','PRO','CLIENT')")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
@@ -41,7 +41,7 @@ public class UserController {
      * 🔹 Créer un utilisateur (Admin uniquement)
      */
     @PostMapping
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
         UserResponse created = userService.createUser(request);
         return ResponseEntity.created(URI.create("/api/users/" + created.getId())).body(created);
@@ -51,7 +51,7 @@ public class UserController {
      * 🔹 Mettre à jour un utilisateur (Admin uniquement)
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserRequest request
@@ -63,7 +63,7 @@ public class UserController {
      * 🔹 Supprimer un utilisateur (Admin uniquement)
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();

@@ -25,7 +25,7 @@ public class SalonController {
      * 🔹 Créer un salon (PRO ou ADMIN uniquement)
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('pro','admin')")
+    @PreAuthorize("hasAnyRole('PRO','ADMIN')")
     public ResponseEntity<SalonResponse> createSalon(@Valid @RequestBody SalonRequest request) {
         SalonResponse created = salonService.createSalon(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -51,7 +51,7 @@ public class SalonController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerSalon(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#id, authentication)")
     public ResponseEntity<SalonResponse> updateSalon(
             @PathVariable Long id,
             @Valid @RequestBody SalonRequest request
@@ -66,7 +66,7 @@ public class SalonController {
      * 🔹 Supprimer un salon (ADMIN ou propriétaire du salon)
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerSalon(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#id, authentication)")
     public ResponseEntity<Void> deleteSalon(@PathVariable Long id) {
         salonService.deleteSalon(id);
         return ResponseEntity.noContent().build();

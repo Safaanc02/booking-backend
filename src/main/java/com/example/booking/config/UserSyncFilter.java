@@ -1,27 +1,35 @@
 package com.example.booking.config;
 
-import com.example.booking.model.User;
-import com.example.booking.repository.UserRepository;
+import com.example.booking.service.CurrentUserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
+/**
+ * Maintient en base le miroir local de l'utilisateur Keycloak porté par le JWT.
+ *
+ * ⚠️ Ordre d'exécution : ce filtre DOIT tourner après BearerTokenAuthenticationFilter.
+ * Il était auparavant placé après SecurityContextHolderFilter, qui s'exécute avant
+ * toute authentification — le contexte était donc systématiquement vide et le filtre
+ * ne faisait jamais rien.
+ */
 public class UserSyncFilter extends OncePerRequestFilter {
 
-    private final UserRepository userRepository;
+    private static final Logger log = LoggerFactory.getLogger(UserSyncFilter.class);
 
-    public UserSyncFilter(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    private final CurrentUserService currentUserService;
+
+    public UserSyncFilter(CurrentUserService currentUserService) {
+        this.currentUserService = currentUserService;
     }
 
     @Override
@@ -30,43 +38,12 @@ public class UserSyncFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
-            String keycloakId = jwt.getClaim("sub");
-            String username   = jwt.getClaim("preferred_username");
-            String email      = jwt.getClaim("email");
-            String fullName   = jwt.getClaim("name");
-
-            // Déterminer rôle principal
-            String role = "CLIENT";
-            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
-            if (realmAccess != null) {
-                List<String> roles = (List<String>) realmAccess.get("roles");
-                if (roles != null && !roles.isEmpty()) {
-                    if (roles.contains("admin")) role = "ADMIN";
-                    else if (roles.contains("proprietaire")) role = "PROPRIETAIRE";
-                }
-            }
-
-            // Vérifier si l’utilisateur existe déjà en DB
-            Optional<User> existing = userRepository.findByKeycloakId(keycloakId);
-
-            if (existing.isPresent()) {
-                User user = existing.get();
-                user.setUsername(username);
-                user.setEmail(email);
-                user.setFullName(fullName);
-                user.setRole(role);
-                userRepository.save(user);
-            } else {
-                User newUser = User.builder()
-                        .keycloakId(keycloakId)
-                        .username(username)
-                        .email(email)
-                        .fullName(fullName)
-                        .role(role)
-                        .enabled(true)
-                        .build();
-                userRepository.save(newUser);
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof Jwt jwt) {
+            try {
+                currentUserService.syncFromJwt(jwt);
+            } catch (Exception e) {
+                // La synchronisation du miroir ne doit jamais faire échouer la requête.
+                log.warn("Synchronisation de l'utilisateur impossible : {}", e.getMessage());
             }
         }
 

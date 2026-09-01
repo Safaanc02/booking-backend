@@ -31,3 +31,15 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets & environnement (ajouté au jalon J0) ###
+.env
+*.env
+!.env.example
+
+### Fichiers bureautiques contenant des identifiants ###
+commandes.docx
+~$*.docx
+
+### macOS ###
+.DS_Store

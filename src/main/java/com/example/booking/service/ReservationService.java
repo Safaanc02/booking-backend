@@ -9,81 +9,68 @@ import com.example.booking.model.Reservation;
 import com.example.booking.model.User;
 import com.example.booking.repository.CreneauRepository;
 import com.example.booking.repository.ReservationRepository;
-import com.example.booking.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Optional;
 
 @Service
+@Transactional
 public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final CreneauRepository creneauRepository;
-    private final UserRepository userRepository;
+    private final CurrentUserService currentUser;
 
     public ReservationService(ReservationRepository reservationRepository,
                               CreneauRepository creneauRepository,
-                              UserRepository userRepository) {
+                              CurrentUserService currentUser) {
         this.reservationRepository = reservationRepository;
         this.creneauRepository = creneauRepository;
-        this.userRepository = userRepository;
+        this.currentUser = currentUser;
     }
 
-    /* ---------- Helpers sécurité ---------- */
+    /* ---------- Lecture ---------- */
 
-    private Authentication getAuth() {
-        return SecurityContextHolder.getContext().getAuthentication();
+    @Transactional(readOnly = true)
+    public Page<ReservationResponse> getAll(Pageable pageable) {
+        return reservationRepository.findAll(pageable).map(ReservationMapper::toResponse);
     }
 
-    private boolean isAdmin(Authentication auth) {
-        return auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals("ROLE_admin") || a.equals("ROLE_ADMIN"));
+    @Transactional(readOnly = true)
+    public ReservationResponse getById(Long id) {
+        Reservation r = charger(id);
+        verifierAcces(r);
+        return ReservationMapper.toResponse(r);
     }
 
-    /** 🔹 Récupère ou crée un User en BDD à partir du token Keycloak */
-    private User getOrCreateCurrentUser() {
-        Authentication auth = getAuth();
-        Jwt jwt = (Jwt) auth.getPrincipal();
-
-        String keycloakId = jwt.getClaim("sub");
-        String username = jwt.getClaim("preferred_username");
-        String email = jwt.getClaim("email");
-
-        return userRepository.findByKeycloakId(keycloakId)
-                .orElseGet(() -> {
-                    User newUser = User.builder()
-                            .keycloakId(keycloakId)
-                            .username(username)
-                            .email(email)
-                            .fullName(jwt.getClaim("name"))
-                            .build();
-                    return userRepository.save(newUser);
-                });
+    @Transactional(readOnly = true)
+    public List<ReservationResponse> getMine() {
+        User me = currentUser.getOrCreate();
+        return reservationRepository.findByClientUsername(me.getUsername())
+                .stream()
+                .map(ReservationMapper::toResponse)
+                .toList();
     }
 
-    /* ---------- API basée DTO ---------- */
+    /* ---------- Écriture ---------- */
 
     public ReservationResponse create(CreateReservationRequest req) {
+        // NOTE : ce contrôle ne protège pas d'une réservation concurrente. Deux
+        // requêtes simultanées passent toutes les deux. La garantie réelle viendra
+        // de la contrainte d'exclusion PostgreSQL prévue au jalon J1 (DI-05).
         if (reservationRepository.existsByCreneauId(req.creneauId())) {
             throw new IllegalStateException("Ce créneau est déjà réservé");
         }
 
         Creneau creneau = creneauRepository.findById(req.creneauId())
-                .orElseThrow(() -> new NoSuchElementException("Créneau introuvable"));
-
-        User client = getOrCreateCurrentUser();
+                .orElseThrow(() -> new NoSuchElementException("Créneau introuvable : " + req.creneauId()));
 
         Reservation r = Reservation.builder()
-                .client(client)
+                .client(currentUser.getOrCreate())
                 .creneau(creneau)
                 .statut(req.statut() != null ? req.statut() : "PENDING")
                 .build();
@@ -91,44 +78,16 @@ public class ReservationService {
         return ReservationMapper.toResponse(reservationRepository.save(r));
     }
 
-    public ReservationResponse getById(Long id) {
-        Reservation r = reservationRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Réservation introuvable"));
-
-        Authentication auth = getAuth();
-        if (!isAdmin(auth) && !r.getClient().getKeycloakId().equals(((Jwt) auth.getPrincipal()).getClaim("sub"))) {
-            throw new SecurityException("Accès refusé");
-        }
-        return ReservationMapper.toResponse(r);
-    }
-
-    public Page<ReservationResponse> getAll(Pageable pageable) {
-        return reservationRepository.findAll(pageable).map(ReservationMapper::toResponse);
-    }
-
-    public List<ReservationResponse> getMine() {
-        User currentUser = getOrCreateCurrentUser();
-        return reservationRepository.findByClientUsername(currentUser.getUsername())
-                .stream().map(ReservationMapper::toResponse).toList();
-    }
-
     public ReservationResponse update(Long id, UpdateReservationRequest req) {
-        Reservation r = reservationRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Réservation introuvable"));
-
-        Authentication auth = getAuth();
-        String currentSub = ((Jwt) auth.getPrincipal()).getClaim("sub");
-
-        if (!isAdmin(auth) && !r.getClient().getKeycloakId().equals(currentSub)) {
-            throw new SecurityException("Accès refusé");
-        }
+        Reservation r = charger(id);
+        verifierAcces(r);
 
         if (!r.getCreneau().getId().equals(req.creneauId())) {
             if (reservationRepository.existsByCreneauId(req.creneauId())) {
-                throw new IllegalStateException("Nouveau créneau déjà réservé");
+                throw new IllegalStateException("Le nouveau créneau est déjà réservé");
             }
             Creneau nouveau = creneauRepository.findById(req.creneauId())
-                    .orElseThrow(() -> new NoSuchElementException("Nouveau créneau introuvable"));
+                    .orElseThrow(() -> new NoSuchElementException("Créneau introuvable : " + req.creneauId()));
             r.setCreneau(nouveau);
         }
         r.setStatut(req.statut());
@@ -137,47 +96,30 @@ public class ReservationService {
     }
 
     public void delete(Long id) {
-        Reservation r = reservationRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Réservation introuvable"));
-
-        Authentication auth = getAuth();
-        String currentSub = ((Jwt) auth.getPrincipal()).getClaim("sub");
-
-        if (!isAdmin(auth) && !r.getClient().getKeycloakId().equals(currentSub)) {
-            throw new SecurityException("Accès refusé");
-        }
+        Reservation r = charger(id);
+        verifierAcces(r);
         reservationRepository.delete(r);
     }
 
-    /* ---------- API legacy (encore utilisée quelque part ?) ---------- */
+    /* ---------- Helpers ---------- */
 
-    public Reservation saveReservation(Reservation reservation) {
-        return reservationRepository.save(reservation);
-    }
-
-    public Optional<Reservation> getReservationById(Long id) {
-        return reservationRepository.findById(id);
-    }
-
-    public List<Reservation> getMyReservations() {
-        return reservationRepository.findByClientUsername(getOrCreateCurrentUser().getUsername());
-    }
-
-    public List<Reservation> getAllReservations() {
-        return reservationRepository.findAll();
-    }
-
-    public void deleteReservation(Long id) {
-        reservationRepository.deleteById(id);
-    }
-
-    public Optional<Reservation> updateReservation(Long id, Reservation reservationDetails) {
+    private Reservation charger(Long id) {
         return reservationRepository.findById(id)
-                .map(reservation -> {
-                    reservation.setClient(reservationDetails.getClient());
-                    reservation.setCreneau(reservationDetails.getCreneau());
-                    reservation.setStatut(reservationDetails.getStatut());
-                    return reservationRepository.save(reservation);
-                });
+                .orElseThrow(() -> new NoSuchElementException("Réservation introuvable : " + id));
+    }
+
+    /** Admin, ou le client qui a posé la réservation. */
+    private void verifierAcces(Reservation r) {
+        if (currentUser.isAdmin()) {
+            return;
+        }
+        String keycloakId = currentUser.currentKeycloakId().orElse(null);
+        boolean proprietaire = r.getClient() != null
+                && keycloakId != null
+                && keycloakId.equals(r.getClient().getKeycloakId());
+
+        if (!proprietaire) {
+            throw new SecurityException("Accès refusé à cette réservation");
+        }
     }
 }

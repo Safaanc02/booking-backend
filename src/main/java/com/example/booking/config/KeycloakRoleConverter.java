@@ -10,19 +10,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Transforme realm_access.roles du JWT Keycloak en autorités Spring Security.
+ *
+ * Les rôles sont normalisés en majuscules et préfixés ROLE_ : un realm déclarant
+ * "admin" produit ROLE_ADMIN, ce qui rend hasRole('ADMIN') fonctionnel partout.
+ */
 public class KeycloakRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
+
     @Override
     public Collection<GrantedAuthority> convert(Jwt jwt) {
-        Map<String, Object> realmAccess = (Map<String, Object>) jwt.getClaims().get("realm_access");
-
-        if (realmAccess == null || realmAccess.isEmpty()) {
+        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+        if (realmAccess == null) {
             return List.of();
         }
 
-        List<String> roles = (List<String>) realmAccess.get("roles");
+        Object rawRoles = realmAccess.get("roles");
+        if (!(rawRoles instanceof Collection<?> roles)) {
+            return List.of();
+        }
 
         return roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role)) // ⚡ ajoute prefix ROLE_
-                .collect(Collectors.toList());
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .map(Roles::normalize)
+                .filter(r -> r != null && !r.isBlank())
+                .distinct()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .collect(Collectors.toUnmodifiableList());
     }
 }

@@ -3,7 +3,6 @@ package com.example.booking.controller;
 import com.example.booking.dto.CreateReservationRequest;
 import com.example.booking.dto.ReservationResponse;
 import com.example.booking.dto.UpdateReservationRequest;
-import com.example.booking.model.Reservation;
 import com.example.booking.service.ReservationService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -15,6 +14,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Les exceptions remontent telles quelles jusqu'à GlobalExceptionHandler.
+ *
+ * Les méthodes étaient auparavant enveloppées dans un try/catch (Exception e)
+ * renvoyant 404 : un refus d'accès (403) et une panne serveur (500) étaient
+ * donc tous deux présentés comme « ressource introuvable ».
+ */
 @RestController
 @RequestMapping("/api/reservations")
 public class ReservationController {
@@ -25,73 +31,45 @@ public class ReservationController {
         this.reservationService = reservationService;
     }
 
-    /**
-     * 🔹 Liste paginée des réservations (ADMIN uniquement)
-     */
+    /** Liste paginée, réservée à l'administration. */
     @GetMapping
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<ReservationResponse>> getAll(Pageable pageable) {
         return ResponseEntity.ok(reservationService.getAll(pageable));
     }
 
-    /**
-     * 🔹 Récupérer une réservation par ID (ADMIN ou propriétaire)
-     */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('admin','client','pro')")
-    public ResponseEntity<ReservationResponse> getReservationById(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(reservationService.getById(id));
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    /**
-     * 🔹 Créer une réservation (client, pro ou admin)
-     */
-    @PostMapping
-    @PreAuthorize("hasAnyRole('client','pro','admin')")
-    public ResponseEntity<ReservationResponse> create(@Valid @RequestBody CreateReservationRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.create(req));
-    }
-
-    /**
-     * 🔹 Mettre à jour une réservation (ADMIN ou propriétaire)
-     */
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('client','pro','admin')")
-    public ResponseEntity<ReservationResponse> update(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateReservationRequest req
-    ) {
-        try {
-            return ResponseEntity.ok(reservationService.update(id, req));
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    /**
-     * 🔹 Voir mes réservations (client, pro, admin)
-     */
+    /** Mes réservations. Déclaré avant /{id} pour que "me" ne soit pas lu comme un identifiant. */
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('client','pro','admin')")
+    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
     public ResponseEntity<List<ReservationResponse>> getMine() {
         return ResponseEntity.ok(reservationService.getMine());
     }
 
-    /**
-     * 🔹 Supprimer une réservation (ADMIN ou propriétaire)
-     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
+    public ResponseEntity<ReservationResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.getById(id));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
+    public ResponseEntity<ReservationResponse> create(@Valid @RequestBody CreateReservationRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.create(req));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
+    public ResponseEntity<ReservationResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateReservationRequest req
+    ) {
+        return ResponseEntity.ok(reservationService.update(id, req));
+    }
+
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('client','pro','admin')")
-    public ResponseEntity<Void> deleteReservation(@PathVariable Long id) {
-        try {
-            reservationService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        reservationService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

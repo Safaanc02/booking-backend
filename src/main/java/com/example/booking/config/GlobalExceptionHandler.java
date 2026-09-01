@@ -6,23 +6,38 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-@ControllerAdvice
+/**
+ * Gestionnaire d'erreurs unique de l'API.
+ *
+ * Le projet en comportait deux (ApiExceptionHandler et celui-ci) qui traitaient
+ * les mêmes exceptions avec des statuts contradictoires — 409 chez l'un, 422
+ * chez l'autre pour IllegalStateException. ApiExceptionHandler a été supprimé.
+ *
+ * Format de réponse :
+ *   { timestamp, status, code, message, details? }
+ *
+ * `code` est stable et destiné au frontend ; `message` est destiné à l'humain
+ * et peut évoluer sans préavis.
+ */
+@RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    // ✅ Gestion validation @Valid
+    /* ---------- Validation ---------- */
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex,
@@ -30,66 +45,84 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request) {
 
-        Map<String, Object> body = base("Validation failed", HttpStatus.BAD_REQUEST.value());
-        Map<String, String> errors = new HashMap<>();
+        Map<String, String> champs = new LinkedHashMap<>();
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
-            errors.put(fe.getField(), fe.getDefaultMessage());
+            champs.putIfAbsent(fe.getField(), fe.getDefaultMessage());
         }
-        body.put("errors", errors);
+
+        Map<String, Object> body = base(HttpStatus.BAD_REQUEST, "VALIDATION", "Requête invalide");
+        body.put("details", champs);
         return ResponseEntity.badRequest().body(body);
     }
 
-    // ✅ Mauvaise méthode HTTP (ex: POST sur un GET)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraint(ConstraintViolationException ex) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION", ex.getMessage());
+    }
+
     @Override
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
             HttpRequestMethodNotSupportedException ex,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
-                .body(base(ex.getMessage(), HttpStatus.METHOD_NOT_ALLOWED.value()));
+        return build(HttpStatus.METHOD_NOT_ALLOWED, "METHODE_NON_AUTORISEE", ex.getMessage());
     }
 
-    // ✅ Ressource introuvable
+    /* ---------- Métier ---------- */
+
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Object> handleNotFound(NoSuchElementException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(base(ex.getMessage(), HttpStatus.NOT_FOUND.value()));
+        return build(HttpStatus.NOT_FOUND, "INTROUVABLE", ex.getMessage());
     }
 
-    // ✅ Règle métier violée
+    /**
+     * Conflit métier : créneau déjà pris, annulation hors délai…
+     * 409 et non 422 : la requête est bien formée, c'est l'état du serveur qui s'y oppose.
+     */
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Object> handleBusiness(IllegalStateException ex) {
-        return ResponseEntity.unprocessableEntity()
-                .body(base(ex.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY.value()));
+    public ResponseEntity<Object> handleConflit(IllegalStateException ex) {
+        return build(HttpStatus.CONFLICT, "CONFLIT", ex.getMessage());
     }
 
-    // ✅ Contrainte violée
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Object> handleConstraint(ConstraintViolationException ex) {
-        return ResponseEntity.badRequest()
-                .body(base(ex.getMessage(), HttpStatus.BAD_REQUEST.value()));
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleArgument(IllegalArgumentException ex) {
+        return build(HttpStatus.BAD_REQUEST, "ARGUMENT_INVALIDE", ex.getMessage());
     }
 
-    // ✅ Accès interdit
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccess(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(base("Accès refusé", HttpStatus.FORBIDDEN.value()));
+    /* ---------- Sécurité ---------- */
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Object> handleAuthentication(AuthenticationException ex) {
+        return build(HttpStatus.UNAUTHORIZED, "NON_AUTHENTIFIE", "Authentification requise");
     }
 
-    // ✅ Fallback générique
+    @ExceptionHandler({AccessDeniedException.class, SecurityException.class})
+    public ResponseEntity<Object> handleAccessDenied(Exception ex) {
+        return build(HttpStatus.FORBIDDEN, "ACCES_REFUSE", "Accès refusé");
+    }
+
+    /* ---------- Filet de sécurité ---------- */
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleOther(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(base("Erreur interne: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        // Le détail part dans les logs, jamais dans la réponse : il peut contenir
+        // des noms de tables, des requêtes SQL ou des chemins de fichiers.
+        logger.error("Erreur non gérée", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "ERREUR_INTERNE", "Une erreur interne est survenue");
     }
 
-    // 🛠 Utilitaire pour formater la réponse JSON
-    private Map<String, Object> base(String message, int status) {
-        Map<String, Object> m = new HashMap<>();
+    /* ---------- Fabrique ---------- */
+
+    private ResponseEntity<Object> build(HttpStatus status, String code, String message) {
+        return ResponseEntity.status(status).body(base(status, code, message));
+    }
+
+    private Map<String, Object> base(HttpStatus status, String code, String message) {
+        Map<String, Object> m = new LinkedHashMap<>();
         m.put("timestamp", Instant.now().toString());
-        m.put("status", status);
+        m.put("status", status.value());
+        m.put("code", code);
         m.put("message", message);
         return m;
     }

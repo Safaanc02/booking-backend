@@ -1,98 +1,57 @@
 package com.example.booking.model;
 
-import com.example.booking.model.User;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Un salon de beauté.
+ *
+ * @Getter/@Setter plutôt que @Data : sur une entité JPA, @Data génère un
+ * equals/hashCode couvrant tous les champs, y compris les collections lazy —
+ * ce qui déclenche des chargements involontaires et casse les Set.
+ *
+ * Les accesseurs écrits à la main ont été retirés : ils doublonnaient Lombok.
+ */
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Salon {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String nom;
-    private String email;
-    @ManyToOne
-    @JoinColumn(name = "owner_id")
-    private User owner; // 🔹 Propriétaire du salon
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNom() {
-        return nom;
-    }
-
-    public void setNom(String nom) {
-        this.nom = nom;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getAdresse() {
-        return adresse;
-    }
-
-    public void setAdresse(String adresse) {
-        this.adresse = adresse;
-    }
-
-    public String getVille() {
-        return ville;
-    }
-
-    public void setVille(String ville) {
-        this.ville = ville;
-    }
-
-    public String getTelephone() {
-        return telephone;
-    }
-
-    public void setTelephone(String telephone) {
-        this.telephone = telephone;
-    }
-
-    public User getProprietaire() {
-        return proprietaire;
-    }
-
-    public void setProprietaire(User proprietaire) {
-        this.proprietaire = proprietaire;
-    }
-
-    public List<Prestation> getPrestations() {
-        return prestations;
-    }
-
-    public void setPrestations(List<Prestation> prestations) {
-        this.prestations = prestations;
-    }
 
     private String adresse;
     private String ville;
     private String telephone;
+    private String email;
 
+    /**
+     * Le professionnel qui gère ce salon.
+     *
+     * L'entité portait auparavant DEUX relations vers User pour ce même concept :
+     * `owner` (owner_id) et `proprietaire` (pro_id). Seule `owner` était alimentée,
+     * `proprietaire` restait nulle — et CustomPermissionEvaluator lisait `owner`
+     * tandis que le reste du code hésitait. `proprietaire` a été supprimée.
+     */
     @ManyToOne
-    @JoinColumn(name = "pro_id")
-    private User proprietaire;  // le PRO qui gère ce salon
+    @JoinColumn(name = "owner_id")
+    private User owner;
 
-    @OneToMany(mappedBy = "salon", cascade = CascadeType.ALL)
-    private List<Prestation> prestations;
+    @OneToMany(mappedBy = "salon", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Prestation> prestations = new ArrayList<>();
 }

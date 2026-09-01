@@ -1,76 +1,48 @@
 package com.example.booking.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.util.List;
+
+/**
+ * Une prestation proposée par un salon : « Coupe femme », « Barbe »…
+ */
 @Entity
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Prestation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String nom;
 
     private String description;
 
-    public Long getId() {
-        return id;
-    }
+    /** Montant en dirhams (MAD). BigDecimal, jamais double : pas d'arrondi flottant sur de l'argent. */
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal prix;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNom() {
-        return nom;
-    }
-
-    public void setNom(String nom) {
-        this.nom = nom;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getPrix() {
-        return prix;
-    }
-
-    public void setPrix(BigDecimal prix) {
-        this.prix = prix;
-    }
-
-    public Integer getDuree() {
-        return duree;
-    }
-
-    public void setDuree(Integer duree) {
-        this.duree = duree;
-    }
-
-    public Salon getSalon() {
-        return salon;
-    }
-
-    public void setSalon(Salon salon) {
-        this.salon = salon;
-    }
-
+    /**
+     * Durée en minutes.
+     *
+     * Le DTO exposait auparavant un String libre (« 30min », « 1h ») que le
+     * service passait à Integer.parseInt() — ce qui levait une
+     * NumberFormatException sur toute valeur autre qu'un nombre nu.
+     * C'est un Integer de bout en bout désormais.
+     */
     @Column(nullable = false)
-    private BigDecimal prix;  // ✅ On garde BigDecimal pour plus de précision
-
-    @Column(nullable = false)
-    private Integer duree;    // ✅ durée en minutes (par ex)
+    private Integer dureeMinutes;
 
     @ManyToOne
     @JoinColumn(name = "salon_id")

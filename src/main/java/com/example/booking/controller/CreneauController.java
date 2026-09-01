@@ -23,7 +23,7 @@ public class CreneauController {
         return creneauService.getAllCreneaux();
     }
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerCreneau(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerCreneau(#id, authentication)")
     public ResponseEntity<Creneau> updateCreneau(@PathVariable Long id, @RequestBody Creneau creneau) {
         return creneauService.updateCreneau(id, creneau)
                 .map(ResponseEntity::ok)
@@ -38,15 +38,16 @@ public class CreneauController {
     }
 
     @PostMapping("/salon/{salonId}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerSalon(#salonId, authentication)")
-    public ResponseEntity<Creneau> createCreneau(@RequestBody Creneau creneau) {
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    public ResponseEntity<Creneau> createCreneau(@PathVariable Long salonId,
+                                                 @RequestBody Creneau creneau) {
         return ResponseEntity.ok(creneauService.saveCreneau(creneau));
     }
 
 
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('admin') or @permission.isOwnerCreneau(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerCreneau(#id, authentication)")
     public ResponseEntity<Void> deleteCreneau(@PathVariable Long id) {
         creneauService.deleteCreneau(id);
         return ResponseEntity.noContent().build();

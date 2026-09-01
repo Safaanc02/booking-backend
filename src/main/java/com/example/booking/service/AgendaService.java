@@ -9,11 +9,13 @@ import com.example.booking.model.Reservation;
 import com.example.booking.model.Salon;
 import com.example.booking.model.enums.OrigineReservation;
 import com.example.booking.model.enums.StatutReservation;
+import com.example.booking.notification.ReservationCreee;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.EmployeRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.ReservationRepository;
 import com.example.booking.repository.SalonRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class AgendaService {
     private final EmployePrestationRepository employePrestationRepository;
     private final DisponibiliteService disponibilites;
     private final CurrentUserService currentUser;
+    private final ApplicationEventPublisher evenements;
 
     public AgendaService(ReservationRepository reservationRepository,
                          SalonRepository salonRepository,
@@ -43,7 +46,8 @@ public class AgendaService {
                          EmployeRepository employeRepository,
                          EmployePrestationRepository employePrestationRepository,
                          DisponibiliteService disponibilites,
-                         CurrentUserService currentUser) {
+                         CurrentUserService currentUser,
+                         ApplicationEventPublisher evenements) {
         this.reservationRepository = reservationRepository;
         this.salonRepository = salonRepository;
         this.prestationRepository = prestationRepository;
@@ -51,6 +55,7 @@ public class AgendaService {
         this.employePrestationRepository = employePrestationRepository;
         this.disponibilites = disponibilites;
         this.currentUser = currentUser;
+        this.evenements = evenements;
     }
 
     /** Rendez-vous du salon sur `jours` jours à partir de `date`. */
@@ -117,7 +122,9 @@ public class AgendaService {
                 .build();
 
         try {
-            return toResponse(reservationRepository.saveAndFlush(r));
+            Reservation enregistree = reservationRepository.saveAndFlush(r);
+            evenements.publishEvent(new ReservationCreee(enregistree.getId()));
+            return toResponse(enregistree);
         } catch (DataIntegrityViolationException e) {
             if (estChevauchement(e)) {
                 throw new IllegalStateException("Ce praticien a déjà un rendez-vous sur ce créneau");

@@ -1,0 +1,35 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<body>
+<div th:fragment="contenu">
+  <h1 style="margin:0 0 8px;font-size:20px;">C'est demain</h1>
+  <p style="margin:0 0 20px;color:#57534e;line-height:1.6;">
+    Bonjour <span th:text="${client}">Salma</span>, petit rappel : votre rendez-vous chez
+    <strong th:text="${salon}">Dar Zine</strong> a lieu
+    <strong th:text="${dateHeure}">jeudi 3 septembre à 14:00</strong>.
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="background:#faf9f7;border-radius:12px;padding:16px;">
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Prestation</td>
+        <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${prestation}">Coupe femme</td></tr>
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Avec</td>
+        <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${employe}">Sofia</td></tr>
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Où</td>
+        <td style="padding:4px 0;text-align:right;" th:text="${adresse}">45 Rue Ibn Batouta</td></tr>
+  </table>
+
+  <p style="margin:20px 0 0;color:#57534e;line-height:1.6;">
+    Un empêchement ? Prévenez le salon au <span th:text="${telephoneSalon}">06 61 23 45 67</span>,
+    ou annulez depuis votre compte.
+  </p>
+
+  <p style="margin:20px 0 0;">
+    <a th:href="${lienCompte}"
+       style="display:inline-block;background:#a83f54;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;">
+      Gérer ma réservation
+    </a>
+  </p>
+</div>
+</body>
+</html>

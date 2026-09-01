@@ -59,6 +59,10 @@ Console Keycloak : http://localhost:8081 (identifiants dans `.env`).
 | API | http://localhost:8080 |
 | Keycloak | http://localhost:8081 |
 | PostgreSQL | `localhost:5433` |
+| Mailpit (emails de test) | http://localhost:8025 |
+
+> **Mailpit** capture tous les emails sans jamais les livrer. C'est là qu'on
+> vérifie une confirmation ou un rappel, plutôt que de supposer qu'ils partent.
 
 ## Vérifier que tout fonctionne
 
@@ -70,6 +74,17 @@ curl 'http://localhost:8080/api/public/salons?ville=Casablanca'
 curl -s -X POST http://localhost:8081/realms/booking-realm/protocol/openid-connect/token \
   -d client_id=booking-app -d username=pro1 -d password=pro1 -d grant_type=password
 ```
+
+## Vérifications automatisées
+
+```bash
+cd booking-backend  && ./mvnw test              # moteur de disponibilité
+cd booking-frontend && npm run verifier:tunnel  # parcours client, vrai navigateur
+cd booking-frontend && npm run verifier:pro     # installation d'un salon
+```
+
+Les deux scripts de navigateur supposent la stack démarrée et au moins un salon
+ACTIF paramétré.
 
 ## État d'avancement
 

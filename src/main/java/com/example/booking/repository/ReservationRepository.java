@@ -48,6 +48,29 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                              @Param("debut") Instant debut,
                              @Param("fin") Instant fin);
 
+    /**
+     * Réservations méritant un rappel : confirmées, démarrant dans la fenêtre,
+     * et pour lesquelles aucun rappel n'a encore été journalisé.
+     *
+     * Le NOT EXISTS sur le journal est ce qui rend la tâche rejouable sans
+     * risque : la relancer n'envoie rien de plus.
+     */
+    @Query("""
+            SELECT r FROM Reservation r
+            WHERE r.statut = :statut
+              AND r.debut >= :debut
+              AND r.debut <  :fin
+              AND NOT EXISTS (
+                  SELECT 1 FROM Notification n
+                  WHERE n.reservation = r AND CAST(n.type AS String) = :type
+              )
+            ORDER BY r.debut
+            """)
+    List<Reservation> aRappeler(@Param("statut") StatutReservation statut,
+                                @Param("type") String type,
+                                @Param("debut") Instant debut,
+                                @Param("fin") Instant fin);
+
     boolean existsByEmployeIdAndStatutInAndDebutLessThanAndFinGreaterThan(
             Long employeId, Collection<StatutReservation> statuts, Instant fin, Instant debut);
 }

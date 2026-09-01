@@ -42,5 +42,19 @@ services:
       retries: 20
       start_period: 30s
 
+  # Serveur SMTP de développement : capture tous les messages sans jamais les
+  # livrer, et les expose via une interface web et une API sur 8025.
+  # Indispensable pour vérifier les envois au lieu de les supposer.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: booking-mailpit
+    environment:
+      TZ: Africa/Casablanca
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # interface web et API
+
 volumes:
   postgres_data:

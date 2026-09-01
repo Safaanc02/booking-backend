@@ -2,6 +2,7 @@ package com.example.booking.controller;
 
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.model.enums.SalonStatut;
+import com.example.booking.notification.RappelPlanificateur;
 import com.example.booking.service.SalonService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,9 +23,23 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final SalonService salonService;
+    private final RappelPlanificateur rappels;
 
-    public AdminController(SalonService salonService) {
+    public AdminController(SalonService salonService, RappelPlanificateur rappels) {
         this.salonService = salonService;
+        this.rappels = rappels;
+    }
+
+    /**
+     * Relance immédiate des rappels de la veille.
+     *
+     * Utile après une interruption du service : la tâche planifiée reprend
+     * d'elle-même à l'heure suivante, mais on peut vouloir rattraper tout de
+     * suite. Sans risque de doublon, le journal des notifications tranche.
+     */
+    @PostMapping("/rappels")
+    public ResponseEntity<java.util.Map<String, Integer>> relancerRappels() {
+        return ResponseEntity.ok(java.util.Map.of("declenches", rappels.declencher()));
     }
 
     /** File de validation : les salons créés par des professionnels, en attente. */

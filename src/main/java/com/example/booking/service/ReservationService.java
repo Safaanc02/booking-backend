@@ -13,11 +13,13 @@ import com.example.booking.model.Salon;
 import com.example.booking.model.User;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutReservation;
+import com.example.booking.notification.ReservationCreee;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.EmployeRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.ReservationRepository;
 import com.example.booking.repository.SalonRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +44,7 @@ public class ReservationService {
     private final EmployePrestationRepository employePrestationRepository;
     private final DisponibiliteService disponibilites;
     private final CurrentUserService currentUser;
+    private final ApplicationEventPublisher evenements;
 
     public ReservationService(ReservationRepository reservationRepository,
                               SalonRepository salonRepository,
@@ -49,7 +52,8 @@ public class ReservationService {
                               EmployeRepository employeRepository,
                               EmployePrestationRepository employePrestationRepository,
                               DisponibiliteService disponibilites,
-                              CurrentUserService currentUser) {
+                              CurrentUserService currentUser,
+                              ApplicationEventPublisher evenements) {
         this.reservationRepository = reservationRepository;
         this.salonRepository = salonRepository;
         this.prestationRepository = prestationRepository;
@@ -57,6 +61,7 @@ public class ReservationService {
         this.employePrestationRepository = employePrestationRepository;
         this.disponibilites = disponibilites;
         this.currentUser = currentUser;
+        this.evenements = evenements;
     }
 
     /* ---------- Lecture ---------- */
@@ -114,7 +119,10 @@ public class ReservationService {
                 .noteClient(req.noteClient())
                 .build();
 
-        return ReservationMapper.toResponse(enregistrer(r));
+        Reservation enregistree = enregistrer(r);
+        // Publié dans la transaction, consommé après son commit.
+        evenements.publishEvent(new ReservationCreee(enregistree.getId()));
+        return ReservationMapper.toResponse(enregistree);
     }
 
     public ReservationResponse update(Long id, UpdateReservationRequest req) {

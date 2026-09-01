@@ -1,0 +1,53 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${sujet}">Booking.ma</title>
+</head>
+<!--/*
+  Mise en page en tableaux et styles en ligne : les clients de messagerie
+  ignorent une bonne part du CSS moderne, et Gmail retire les balises style
+  dans certains contextes. Ce n'est pas du HTML d'un autre age par negligence,
+  c'est ce qui s'affiche correctement partout.
+
+  Les commentaires de ce fichier sont des commentaires de parseur Thymeleaf,
+  retires au rendu, alors qu'un commentaire HTML ordinaire partirait dans le
+  message. Ne jamais ecrire ici la sequence qui les ferme : elle couperait le
+  commentaire en avance et la suite s'afficherait en clair, tout en haut.
+*/-->
+<body style="margin:0;padding:0;background:#faf9f7;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1c1917;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf9f7;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               style="max-width:560px;background:#ffffff;border-radius:16px;border:1px solid #e7e5e4;">
+
+          <tr>
+            <td style="padding:24px 28px 8px;">
+              <span style="font-size:18px;font-weight:700;">Booking<span style="color:#a83f54;">.ma</span></span>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px 28px 24px;">
+              <!--/* Prefixe __${...}__ : depuis Thymeleaf 3.1 une expression de
+                     fragment passee comme simple chaine n'est plus resolue. */-->
+              <div th:replace="~{__${contenu}__}">Contenu du message</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 28px 24px;border-top:1px solid #f5f5f4;color:#a8a29e;font-size:12px;line-height:1.6;">
+              Vous recevez ce message parce qu'un rendez-vous a été pris avec votre adresse.
+              <br>
+              <a th:href="${lienCompte}" style="color:#a83f54;">Gérer mes réservations</a>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package com.example.booking.model;
 
+import com.example.booking.model.enums.OrigineReservation;
 import com.example.booking.model.enums.StatutReservation;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -31,9 +32,24 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
+    /**
+     * Nul pour une réservation prise par téléphone : le client n'a pas de compte.
+     * Dans ce cas, clientNomLibre prend le relais (contrainte chk_reservation_client).
+     */
+    @ManyToOne
     @JoinColumn(name = "client_id")
     private User client;
+
+    @Column(name = "client_nom_libre", length = 120)
+    private String clientNomLibre;
+
+    @Column(name = "client_telephone_libre", length = 20)
+    private String clientTelephoneLibre;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private OrigineReservation origine = OrigineReservation.EN_LIGNE;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "salon_id")
@@ -75,4 +91,17 @@ public class Reservation {
 
     @Column(name = "annulee_le")
     private Instant annuleeLe;
+
+    /** Nom à afficher au salon, que le client ait un compte ou non. */
+    public String nomClient() {
+        if (client != null) {
+            return client.getFullName() != null ? client.getFullName() : client.getUsername();
+        }
+        return clientNomLibre;
+    }
+
+    public String telephoneClient() {
+        if (clientTelephoneLibre != null) return clientTelephoneLibre;
+        return client != null ? client.getTelephone() : null;
+    }
 }

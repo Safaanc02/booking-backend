@@ -1,16 +1,22 @@
 package com.example.booking.controller;
 
 import com.example.booking.dto.AbsenceRequest;
+import com.example.booking.dto.AgendaResponse;
+import com.example.booking.dto.ReservationProRequest;
 import com.example.booking.dto.EmployeRequest;
 import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.HoraireRequest;
 import com.example.booking.dto.HoraireResponse;
+import com.example.booking.model.enums.StatutReservation;
+import com.example.booking.service.AgendaService;
 import com.example.booking.service.EquipeService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -26,9 +32,41 @@ import java.util.Map;
 public class ProController {
 
     private final EquipeService equipe;
+    private final AgendaService agenda;
 
-    public ProController(EquipeService equipe) {
+    public ProController(EquipeService equipe, AgendaService agenda) {
         this.equipe = equipe;
+        this.agenda = agenda;
+    }
+
+    /* ---------- Agenda ---------- */
+
+    /** Rendez-vous du salon. `jours` vaut 1 pour la vue jour, 7 pour la semaine. */
+    @GetMapping("/salons/{salonId}/agenda")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    public ResponseEntity<List<AgendaResponse>> agenda(
+            @PathVariable Long salonId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "1") int jours) {
+        return ResponseEntity.ok(agenda.agenda(salonId, date, jours));
+    }
+
+    /** Rendez-vous pris par téléphone ou au comptoir, pour un client sans compte. */
+    @PostMapping("/salons/{salonId}/reservations")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    public ResponseEntity<AgendaResponse> creerHorsLigne(
+            @PathVariable Long salonId,
+            @Valid @RequestBody ReservationProRequest req) {
+        return ResponseEntity.ok(agenda.creerHorsLigne(salonId, req));
+    }
+
+    /** HONOREE, ABSENT ou ANNULEE_SALON. La propriété est vérifiée dans le service. */
+    @PatchMapping("/reservations/{id}/statut")
+    @PreAuthorize("hasAnyRole('PRO','ADMIN')")
+    public ResponseEntity<AgendaResponse> changerStatut(
+            @PathVariable Long id,
+            @RequestParam StatutReservation statut) {
+        return ResponseEntity.ok(agenda.changerStatut(id, statut));
     }
 
     /* ---------- Équipe ---------- */

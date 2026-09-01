@@ -8,6 +8,10 @@ public final class ReservationMapper {
     private ReservationMapper() {}
 
     public static ReservationResponse toResponse(Reservation r) {
+        return toResponse(r, false);
+    }
+
+    public static ReservationResponse toResponse(Reservation r, boolean avisDepose) {
         return new ReservationResponse(
                 r.getId(),
                 r.getSalon() != null ? r.getSalon().getId() : null,
@@ -21,7 +25,8 @@ public final class ReservationMapper {
                 r.getFin(),
                 r.getStatut() != null ? r.getStatut().name() : null,
                 r.getPrixFige(),
-                r.getNoteClient()
+                r.getNoteClient(),
+                avisDepose
         );
     }
 }

@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,6 +21,9 @@ public class SalonResponse {
     private String telephone;
     private String email;
     private String categorie;
+    /** Nulle tant qu'aucun avis n'a été déposé : sans avis n'est pas noté zéro. */
+    private BigDecimal noteMoyenne;
+    private Integer nombreAvis;
     private String statut;
     private Integer delaiAnnulationHeures;
     private Long ownerId;

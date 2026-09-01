@@ -1,13 +1,16 @@
 package com.example.booking.controller;
 
+import com.example.booking.dto.AvisResponse;
 import com.example.booking.dto.CreneauDisponible;
 import com.example.booking.dto.DisponibilitesResponse;
 import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.service.DisponibiliteService;
+import com.example.booking.service.AvisService;
 import com.example.booking.service.PublicCatalogService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -33,9 +36,21 @@ public class PublicController {
     private final PublicCatalogService catalogue;
     private final DisponibiliteService disponibilites;
 
-    public PublicController(PublicCatalogService catalogue, DisponibiliteService disponibilites) {
+    private final AvisService avis;
+
+    public PublicController(PublicCatalogService catalogue, DisponibiliteService disponibilites, AvisService avis) {
         this.catalogue = catalogue;
         this.disponibilites = disponibilites;
+        this.avis = avis;
+    }
+
+    /** Avis publiés d'un salon, du plus récent au plus ancien. */
+    @GetMapping("/salons/{id}/avis")
+    public ResponseEntity<Page<AvisResponse>> avis(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return cache60(avis.parSalon(id, PageRequest.of(page, Math.min(size, 50))));
     }
 
     @GetMapping("/salons")

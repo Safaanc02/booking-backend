@@ -15,6 +15,7 @@ import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutReservation;
 import com.example.booking.notification.ReservationCreee;
 import com.example.booking.repository.EmployePrestationRepository;
+import com.example.booking.repository.AvisRepository;
 import com.example.booking.repository.EmployeRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.ReservationRepository;
@@ -31,6 +32,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 import java.util.NoSuchElementException;
 
 @Service
@@ -42,6 +44,7 @@ public class ReservationService {
     private final PrestationRepository prestationRepository;
     private final EmployeRepository employeRepository;
     private final EmployePrestationRepository employePrestationRepository;
+    private final AvisRepository avisRepository;
     private final DisponibiliteService disponibilites;
     private final CurrentUserService currentUser;
     private final ApplicationEventPublisher evenements;
@@ -51,6 +54,7 @@ public class ReservationService {
                               PrestationRepository prestationRepository,
                               EmployeRepository employeRepository,
                               EmployePrestationRepository employePrestationRepository,
+                              AvisRepository avisRepository,
                               DisponibiliteService disponibilites,
                               CurrentUserService currentUser,
                               ApplicationEventPublisher evenements) {
@@ -59,6 +63,7 @@ public class ReservationService {
         this.prestationRepository = prestationRepository;
         this.employeRepository = employeRepository;
         this.employePrestationRepository = employePrestationRepository;
+        this.avisRepository = avisRepository;
         this.disponibilites = disponibilites;
         this.currentUser = currentUser;
         this.evenements = evenements;
@@ -81,8 +86,18 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public List<ReservationResponse> getMine() {
         User me = currentUser.getOrCreate();
-        return reservationRepository.findByClientIdOrderByDebutDesc(me.getId())
-                .stream().map(ReservationMapper::toResponse).toList();
+        List<Reservation> mes = reservationRepository.findByClientIdOrderByDebutDesc(me.getId());
+        if (mes.isEmpty()) {
+            return List.of();
+        }
+        // Une seule requête pour savoir lesquelles sont déjà commentées,
+        // plutôt qu'un exists() par ligne.
+        Set<Long> commentees = avisRepository.reservationsDejaCommentees(
+                mes.stream().map(Reservation::getId).toList());
+
+        return mes.stream()
+                .map(r -> ReservationMapper.toResponse(r, commentees.contains(r.getId())))
+                .toList();
     }
 
     /* ---------- Écriture ---------- */

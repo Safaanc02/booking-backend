@@ -3,6 +3,8 @@ package com.example.booking.model;
 import com.example.booking.model.enums.OrigineReservation;
 import com.example.booking.model.enums.StatutReservation;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -86,6 +88,9 @@ public class Reservation {
     @Column(name = "note_client", length = 500)
     private String noteClient;
 
+    // La valeur vient du DEFAULT now() de la base. Sans @Generated, Hibernate
+    // ne la relit pas après insertion et le champ reste nul dans la réponse.
+    @Generated(event = EventType.INSERT)
     @Column(name = "cree_le", nullable = false, insertable = false, updatable = false)
     private Instant creeLe;
 

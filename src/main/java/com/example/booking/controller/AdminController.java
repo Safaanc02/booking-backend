@@ -1,8 +1,11 @@
 package com.example.booking.controller;
 
+import com.example.booking.dto.AvisResponse;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.model.enums.SalonStatut;
+import com.example.booking.model.enums.StatutAvis;
 import com.example.booking.notification.RappelPlanificateur;
+import com.example.booking.service.AvisService;
 import com.example.booking.service.SalonService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,9 +28,28 @@ public class AdminController {
     private final SalonService salonService;
     private final RappelPlanificateur rappels;
 
-    public AdminController(SalonService salonService, RappelPlanificateur rappels) {
+    private final AvisService avis;
+
+    public AdminController(SalonService salonService, RappelPlanificateur rappels, AvisService avis) {
         this.salonService = salonService;
         this.rappels = rappels;
+        this.avis = avis;
+    }
+
+    /* ---------- Modération des avis ---------- */
+
+    @GetMapping("/avis")
+    public ResponseEntity<Page<AvisResponse>> avis(
+            @RequestParam(defaultValue = "PUBLIE") StatutAvis statut,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(avis.parStatut(statut, pageable));
+    }
+
+    /** Modération a posteriori : un avis est publié d'emblée, masqué s'il dérape. */
+    @PatchMapping("/avis/{id}/statut")
+    public ResponseEntity<AvisResponse> modererAvis(@PathVariable Long id,
+                                                    @RequestParam StatutAvis statut) {
+        return ResponseEntity.ok(avis.changerStatut(id, statut));
     }
 
     /**

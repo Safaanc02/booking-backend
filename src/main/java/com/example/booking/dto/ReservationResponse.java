@@ -15,5 +15,7 @@ public record ReservationResponse(
         Instant fin,
         String statut,
         BigDecimal prix,
-        String noteClient
+        String noteClient,
+        /** Permet à l'interface de proposer, ou non, le dépôt d'un avis. */
+        boolean avisDepose
 ) {}

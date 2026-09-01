@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 import java.util.List;
 
 /** Fiche complète : le salon, son catalogue et son équipe, en une requête. */
@@ -22,6 +24,9 @@ public class SalonDetailResponse {
     private String telephone;
     private String email;
     private String categorie;
+    /** Nulle tant qu'aucun avis n'a été déposé : sans avis n'est pas noté zéro. */
+    private BigDecimal noteMoyenne;
+    private Integer nombreAvis;
     private Integer delaiAnnulationHeures;
     private List<PrestationResponse> prestations;
     private List<EmployeResponse> employes;

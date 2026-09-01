@@ -3,12 +3,15 @@ package com.example.booking.model;
 import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.model.enums.SalonStatut;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,8 +70,23 @@ public class Salon {
     @Builder.Default
     private int delaiAnnulationHeures = 24;
 
+    // La valeur vient du DEFAULT now() de la base. Sans @Generated, Hibernate
+    // ne la relit pas après insertion et le champ reste nul dans la réponse.
+    @Generated(event = EventType.INSERT)
     @Column(name = "cree_le", nullable = false, insertable = false, updatable = false)
     private Instant creeLe;
+
+    /**
+     * Note dénormalisée, recalculée à chaque écriture d'avis.
+     * Nulle tant qu'aucun avis n'a été déposé — un salon sans avis n'est pas
+     * un salon noté zéro.
+     */
+    @Column(name = "note_moyenne", precision = 2, scale = 1)
+    private BigDecimal noteMoyenne;
+
+    @Column(name = "nombre_avis", nullable = false)
+    @Builder.Default
+    private int nombreAvis = 0;
 
     @OneToMany(mappedBy = "salon", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

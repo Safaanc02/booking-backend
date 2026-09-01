@@ -144,6 +144,8 @@ public class SalonService {
                 .telephone(s.getTelephone())
                 .email(s.getEmail())
                 .categorie(s.getCategorie() != null ? s.getCategorie().name() : null)
+                .noteMoyenne(s.getNoteMoyenne())
+                .nombreAvis(s.getNombreAvis())
                 .statut(s.getStatut() != null ? s.getStatut().name() : null)
                 .delaiAnnulationHeures(s.getDelaiAnnulationHeures())
                 .ownerId(s.getOwner() != null ? s.getOwner().getId() : null)

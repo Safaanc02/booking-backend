@@ -81,6 +81,7 @@ curl -s -X POST http://localhost:8081/realms/booking-realm/protocol/openid-conne
 cd booking-backend  && ./mvnw test              # moteur de disponibilité
 cd booking-frontend && npm run verifier:tunnel  # parcours client, vrai navigateur
 cd booking-frontend && npm run verifier:pro     # installation d'un salon
+cd booking-frontend && npm run verifier:avis    # cycle d'un avis client
 ```
 
 Les deux scripts de navigateur supposent la stack démarrée et au moins un salon

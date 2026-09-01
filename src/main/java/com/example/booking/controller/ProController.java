@@ -9,6 +9,8 @@ import com.example.booking.dto.HoraireRequest;
 import com.example.booking.dto.HoraireResponse;
 import com.example.booking.model.enums.StatutReservation;
 import com.example.booking.service.AgendaService;
+import com.example.booking.dto.AvisResponse;
+import com.example.booking.service.AvisService;
 import com.example.booking.service.EquipeService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -33,10 +35,25 @@ public class ProController {
 
     private final EquipeService equipe;
     private final AgendaService agenda;
+    private final AvisService avis;
 
-    public ProController(EquipeService equipe, AgendaService agenda) {
+    public ProController(EquipeService equipe, AgendaService agenda, AvisService avis) {
         this.equipe = equipe;
         this.agenda = agenda;
+        this.avis = avis;
+    }
+
+    /**
+     * Droit de réponse du salon.
+     *
+     * Un avis négatif auquel le gérant répond posément fait souvent meilleure
+     * impression qu'un avis neutre laissé sans suite.
+     */
+    @PostMapping("/avis/{avisId}/reponse")
+    @PreAuthorize("hasAnyRole('PRO','ADMIN')")
+    public ResponseEntity<AvisResponse> repondre(@PathVariable Long avisId,
+                                                 @RequestBody Map<String, String> corps) {
+        return ResponseEntity.ok(avis.repondre(avisId, corps.get("reponse")));
     }
 
     /* ---------- Agenda ---------- */

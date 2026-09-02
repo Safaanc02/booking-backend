@@ -26,17 +26,26 @@ public class PrestationController {
         this.prestationService = prestationService;
     }
 
+    /** Catalogue de toute la plateforme — administration uniquement. */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<PrestationResponse>> getAllPrestations() {
         return ResponseEntity.ok(prestationService.getAllPrestations());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerPrestation(#id, authentication)")
     public ResponseEntity<PrestationResponse> getPrestationById(@PathVariable Long id) {
         return ResponseEntity.ok(prestationService.getPrestationById(id));
     }
 
+    /**
+     * Catalogue d'un salon, vu par son propriétaire — y compris avant
+     * validation, pour pouvoir le paramétrer. Le parcours public lit la fiche
+     * /api/public/salons/{id}, qui n'expose que les salons ACTIF.
+     */
     @GetMapping("/salon/{salonId}")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
     public ResponseEntity<List<PrestationResponse>> getBySalon(@PathVariable Long salonId) {
         return ResponseEntity.ok(prestationService.getBySalon(salonId));
     }

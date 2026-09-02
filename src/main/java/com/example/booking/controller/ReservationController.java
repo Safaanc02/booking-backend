@@ -77,8 +77,20 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.annuler(id));
     }
 
+    /**
+     * Suppression définitive — administration uniquement.
+     *
+     * Elle était ouverte au client, ce qui contournait toute la politique
+     * d'annulation : hors préavis il recevait 409 sur /annuler, mais un DELETE
+     * passait sans contrôle de délai ni de statut. Le salon perdait toute
+     * trace — pas de statut ANNULEE_CLIENT, rien dans les statistiques, aucun
+     * décompte de no-show — et le créneau se libérait sans qu'il le sache.
+     *
+     * Un client annule, il ne supprime pas. Cette route ne sert plus qu'à
+     * corriger une donnée erronée.
+     */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         reservationService.delete(id);
         return ResponseEntity.noContent().build();

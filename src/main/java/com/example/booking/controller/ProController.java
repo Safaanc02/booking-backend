@@ -165,8 +165,15 @@ public class ProController {
         return ResponseEntity.ok(Map.of("id", equipe.creerAbsence(req)));
     }
 
+    /**
+     * Suppression d'une absence.
+     *
+     * Était réservée à l'administration : un professionnel pouvait déclarer un
+     * congé mais pas le retirer, et une saisie erronée bloquait son agenda
+     * définitivement.
+     */
     @DeleteMapping("/absences/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerAbsence(#id, authentication)")
     public ResponseEntity<Void> supprimerAbsence(@PathVariable Long id) {
         equipe.supprimerAbsence(id);
         return ResponseEntity.noContent().build();

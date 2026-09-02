@@ -3,6 +3,7 @@ package com.example.booking.config;
 import com.example.booking.model.Employe;
 import com.example.booking.model.Prestation;
 import com.example.booking.model.Salon;
+import com.example.booking.repository.AbsenceRepository;
 import com.example.booking.repository.EmployeRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.SalonRepository;
@@ -29,13 +30,16 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
     private final SalonRepository salonRepository;
     private final PrestationRepository prestationRepository;
     private final EmployeRepository employeRepository;
+    private final AbsenceRepository absenceRepository;
 
     public CustomPermissionEvaluator(SalonRepository salonRepository,
                                      PrestationRepository prestationRepository,
-                                     EmployeRepository employeRepository) {
+                                     EmployeRepository employeRepository,
+                                     AbsenceRepository absenceRepository) {
         this.salonRepository = salonRepository;
         this.prestationRepository = prestationRepository;
         this.employeRepository = employeRepository;
+        this.absenceRepository = absenceRepository;
     }
 
     /* ---------- Méthodes appelées depuis les @PreAuthorize ---------- */
@@ -69,6 +73,20 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
                 .orElse(false);
     }
 
+    /**
+     * Une absence vise soit un praticien, soit le salon entier : on remonte au
+     * salon dans les deux cas.
+     */
+    public boolean isOwnerAbsence(Long absenceId, Authentication authentication) {
+        if (absenceId == null) return false;
+        if (isAdmin(authentication)) return true;
+        String keycloakId = currentKeycloakId(authentication);
+        if (keycloakId == null) return false;
+        return absenceRepository.keycloakIdDuProprietaire(absenceId)
+                .map(keycloakId::equals)
+                .orElse(false);
+    }
+
     /* ---------- Contrat PermissionEvaluator ---------- */
 
     @Override
@@ -90,6 +108,7 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
             case "salon"      -> isOwnerSalon(id, authentication);
             case "prestation" -> isOwnerPrestation(id, authentication);
             case "employe"    -> isOwnerEmploye(id, authentication);
+            case "absence"    -> isOwnerAbsence(id, authentication);
             default           -> false;
         };
     }

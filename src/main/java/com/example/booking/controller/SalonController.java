@@ -38,8 +38,15 @@ public class SalonController {
         return ResponseEntity.ok(salonService.mesSalons());
     }
 
-    /** Fiche d'un salon par identifiant. */
+    /**
+     * Fiche brute d'un salon — propriétaire ou administration.
+     *
+     * Sans restriction, tout compte authentifié lisait n'importe quel salon,
+     * y compris EN_ATTENTE ou SUSPENDU. Le parcours public passe par
+     * /api/public/salons/{id}, qui filtre sur ACTIF.
+     */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#id, authentication)")
     public ResponseEntity<SalonResponse> getSalonById(@PathVariable Long id) {
         return salonService.getSalonById(id)
                 .map(salon -> ResponseEntity.ok(salonService.toResponse(salon)))
@@ -47,10 +54,14 @@ public class SalonController {
     }
 
     /**
-     * 🔹 Liste paginée + triable des salons (accessible à tous)
-     * Exemple: GET /api/salons?page=0&size=10&sort=nom,asc
+     * Tous les salons, tous statuts confondus — administration uniquement.
+     *
+     * Cette route ne filtrait pas sur le statut, contrairement à la recherche
+     * publique : un simple compte client voyait les salons non encore validés
+     * et leurs propriétaires. Un professionnel utilise /api/salons/me.
      */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<SalonResponse>> getAllSalons(Pageable pageable) {
         return ResponseEntity.ok(salonService.getAllSalons(pageable));
     }

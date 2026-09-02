@@ -21,17 +21,29 @@ public class UserController {
     /**
      * 🔹 Liste des utilisateurs (Admin, Pro)
      */
+    /**
+     * Liste des utilisateurs — administration uniquement.
+     *
+     * Elle était ouverte aux professionnels : n'importe lequel pouvait
+     * récupérer nom, email et rôle de tous les comptes de la plateforme.
+     * Ce sont des données à caractère personnel au sens de la loi 09-08.
+     */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','PRO')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
     /**
-     * 🔹 Récupérer un utilisateur par ID (Admin, Pro, Client)
+     * Fiche d'un utilisateur — administration uniquement.
+     *
+     * Elle était ouverte à tout compte authentifié, y compris client : chacun
+     * pouvait lire l'email de n'importe qui, et énumérer les comptes par
+     * identifiant. Un utilisateur qui veut ses propres informations les a déjà
+     * dans son jeton.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','PRO','CLIENT')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }

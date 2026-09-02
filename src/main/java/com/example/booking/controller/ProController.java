@@ -60,7 +60,7 @@ public class ProController {
 
     /** Rendez-vous du salon. `jours` vaut 1 pour la vue jour, 7 pour la semaine. */
     @GetMapping("/salons/{salonId}/agenda")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<List<AgendaResponse>> agenda(
             @PathVariable Long salonId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
@@ -68,9 +68,25 @@ public class ProController {
         return ResponseEntity.ok(agenda.agenda(salonId, date, jours));
     }
 
+    /**
+     * Planning personnel : les rendez-vous du compte connecté, tous salons
+     * confondus.
+     *
+     * Aucun contrôle de propriété — chacun ne voit que ses propres fiches, la
+     * résolution se fait sur le keycloakId du jeton. Le rôle PRO suffit :
+     * l'accès est celui d'un membre d'équipe, pas d'un administrateur.
+     */
+    @GetMapping("/mon-planning")
+    @PreAuthorize("hasAnyRole('PRO','ADMIN')")
+    public ResponseEntity<List<AgendaResponse>> monPlanning(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "1") int jours) {
+        return ResponseEntity.ok(agenda.monPlanning(date, jours));
+    }
+
     /** Rendez-vous pris par téléphone ou au comptoir, pour un client sans compte. */
     @PostMapping("/salons/{salonId}/reservations")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<AgendaResponse> creerHorsLigne(
             @PathVariable Long salonId,
             @Valid @RequestBody ReservationProRequest req) {
@@ -89,27 +105,27 @@ public class ProController {
     /* ---------- Équipe ---------- */
 
     @GetMapping("/salons/{salonId}/employes")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<List<EmployeResponse>> lister(@PathVariable Long salonId) {
         return ResponseEntity.ok(equipe.lister(salonId));
     }
 
     @PostMapping("/salons/{salonId}/employes")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<EmployeResponse> creer(@PathVariable Long salonId,
                                                  @Valid @RequestBody EmployeRequest req) {
         return ResponseEntity.ok(equipe.creer(salonId, req));
     }
 
     @PutMapping("/employes/{employeId}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerEmploye(#employeId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererEmploye(#employeId, authentication)")
     public ResponseEntity<EmployeResponse> modifier(@PathVariable Long employeId,
                                                     @Valid @RequestBody EmployeRequest req) {
         return ResponseEntity.ok(equipe.modifier(employeId, req));
     }
 
     @DeleteMapping("/employes/{employeId}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerEmploye(#employeId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererEmploye(#employeId, authentication)")
     public ResponseEntity<Void> desactiver(@PathVariable Long employeId) {
         equipe.desactiver(employeId);
         return ResponseEntity.noContent().build();
@@ -117,7 +133,7 @@ public class ProController {
 
     /** Remplace la liste des prestations que ce praticien sait réaliser. */
     @PutMapping("/employes/{employeId}/prestations")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerEmploye(#employeId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererEmploye(#employeId, authentication)")
     public ResponseEntity<Void> affecter(@PathVariable Long employeId,
                                          @RequestBody Map<String, List<Long>> corps) {
         equipe.affecterPrestations(employeId, corps.getOrDefault("prestationIds", List.of()));
@@ -127,14 +143,14 @@ public class ProController {
     /* ---------- Horaires ---------- */
 
     @GetMapping("/salons/{salonId}/horaires")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<List<HoraireResponse>> horairesSalon(@PathVariable Long salonId) {
         return ResponseEntity.ok(equipe.horairesSalon(salonId));
     }
 
     /** Remplace la semaine complète. Un diff partiel serait plus fragile pour un gain nul. */
     @PutMapping("/salons/{salonId}/horaires")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<List<HoraireResponse>> definirHorairesSalon(
             @PathVariable Long salonId,
             @Valid @RequestBody List<HoraireRequest> semaine) {
@@ -142,13 +158,13 @@ public class ProController {
     }
 
     @GetMapping("/employes/{employeId}/horaires")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerEmploye(#employeId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererEmploye(#employeId, authentication)")
     public ResponseEntity<List<HoraireResponse>> horairesEmploye(@PathVariable Long employeId) {
         return ResponseEntity.ok(equipe.horairesEmploye(employeId));
     }
 
     @PutMapping("/employes/{employeId}/horaires")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerEmploye(#employeId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererEmploye(#employeId, authentication)")
     public ResponseEntity<List<HoraireResponse>> definirHorairesEmploye(
             @PathVariable Long employeId,
             @Valid @RequestBody List<HoraireRequest> semaine) {
@@ -159,8 +175,8 @@ public class ProController {
 
     @PostMapping("/absences")
     @PreAuthorize("hasRole('ADMIN') "
-            + "or (#req.employeId != null and @permission.isOwnerEmploye(#req.employeId, authentication)) "
-            + "or (#req.salonId   != null and @permission.isOwnerSalon(#req.salonId, authentication))")
+            + "or (#req.employeId != null and @permission.peutGererEmploye(#req.employeId, authentication)) "
+            + "or (#req.salonId   != null and @permission.peutGererSalon(#req.salonId, authentication))")
     public ResponseEntity<Map<String, Long>> creerAbsence(@Valid @RequestBody AbsenceRequest req) {
         return ResponseEntity.ok(Map.of("id", equipe.creerAbsence(req)));
     }
@@ -173,7 +189,7 @@ public class ProController {
      * définitivement.
      */
     @DeleteMapping("/absences/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerAbsence(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererAbsence(#id, authentication)")
     public ResponseEntity<Void> supprimerAbsence(@PathVariable Long id) {
         equipe.supprimerAbsence(id);
         return ResponseEntity.noContent().build();

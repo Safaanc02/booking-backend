@@ -41,6 +41,38 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
     @Query("SELECT DISTINCT s.ville FROM Salon s WHERE s.ville IS NOT NULL AND s.statut = :statut ORDER BY s.ville")
     List<String> villesDistinctes(@Param("statut") SalonStatut statut);
 
+    /**
+     * Identifiant Keycloak du propriétaire. Jointure externe : un salon sans
+     * propriétaire (owner mis à NULL par suppression de compte) doit renvoyer
+     * une ligne vide, pas disparaître du résultat.
+     */
+    @Query("SELECT proprietaire.keycloakId FROM Salon s LEFT JOIN s.owner proprietaire WHERE s.id = :id")
+    java.util.Optional<String> keycloakIdDuProprietaire(@Param("id") Long id);
+
+    /**
+     * Salons que ce compte peut administrer : ceux qu'il possède, et ceux où il
+     * est gestionnaire délégué.
+     *
+     * `findByOwnerId` ne suffisait pas : un gestionnaire ne possède rien, son
+     * tableau de bord restait donc vide alors que l'API lui donnait bien accès
+     * au salon. « Mes salons » signifie « ceux que je peux gérer ».
+     *
+     * Jointures explicitement externes des deux côtés : un salon sans
+     * propriétaire, ou sans membre d'équipe rattaché à un compte, ne doit pas
+     * disparaître du résultat.
+     */
+    @Query("""
+            SELECT DISTINCT s FROM Salon s
+            LEFT JOIN s.owner proprietaire
+            LEFT JOIN Employe e ON e.salon = s AND e.actif = true
+            LEFT JOIN e.user compte
+            WHERE proprietaire.keycloakId = :keycloakId
+               OR (compte.keycloakId = :keycloakId
+                   AND e.role = com.example.booking.model.enums.RoleEmploye.GESTIONNAIRE)
+            ORDER BY s.nom
+            """)
+    List<Salon> queJePeuxGerer(@Param("keycloakId") String keycloakId);
+
     List<Salon> findByOwnerIdOrderByNomAsc(Long ownerId);
 
     Page<Salon> findByStatutOrderByCreeLeAsc(SalonStatut statut, Pageable pageable);

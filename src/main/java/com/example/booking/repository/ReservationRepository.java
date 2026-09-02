@@ -71,6 +71,23 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                 @Param("debut") Instant debut,
                                 @Param("fin") Instant fin);
 
+    /**
+     * Planning de plusieurs praticiens sur une fenêtre, tous statuts confondus.
+     *
+     * Sert au planning personnel : un praticien doit voir ses annulations et
+     * ses absences constatées, pas seulement les rendez-vous encore actifs.
+     */
+    @Query("""
+            SELECT r FROM Reservation r
+            WHERE r.employe.id IN :employeIds
+              AND r.debut < :fin
+              AND r.fin   > :debut
+            ORDER BY r.debut
+            """)
+    List<Reservation> planningDesPraticiens(@Param("employeIds") Collection<Long> employeIds,
+                                            @Param("debut") Instant debut,
+                                            @Param("fin") Instant fin);
+
     boolean existsByEmployeIdAndStatutInAndDebutLessThanAndFinGreaterThan(
             Long employeId, Collection<StatutReservation> statuts, Instant fin, Instant debut);
 }

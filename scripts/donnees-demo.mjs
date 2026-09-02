@@ -109,7 +109,14 @@ const roleProKeycloak = await (await fetch(`${KC}/admin/realms/booking-realm/rol
   headers: { Authorization: `Bearer ${kcAdmin}` },
 })).json()
 
-/** Crée le compte s'il n'existe pas, puis renvoie un jeton applicatif pour lui. */
+/**
+ * Crée le compte s'il n'existe pas, puis renvoie un jeton applicatif.
+ *
+ * Le premier appel authentifié est délibéré : l'application ne garde un miroir
+ * local d'un compte Keycloak qu'après une première requête authentifiée. Sans
+ * lui, impossible de rattacher ce compte à une fiche d'équipe — le
+ * rattachement se fait par email sur le miroir.
+ */
 const compteProfessionnel = async ({ identifiant, prenom, nom, email }) => {
   await kc('POST', '/users', {
     username: identifiant, email, firstName: prenom, lastName: nom,
@@ -126,7 +133,11 @@ const compteProfessionnel = async ({ identifiant, prenom, nom, email }) => {
   await kc('POST', `/users/${id}/role-mappings/realm`,
     [{ id: roleProKeycloak.id, name: roleProKeycloak.name }])
 
-  return jeton(identifiant)
+  const token = await jeton(identifiant)
+  // Matérialise le miroir local : sans cette requête, le compte est inconnu
+  // de l'application et ne peut pas être rattaché à une fiche d'équipe.
+  await appel('GET', '/api/reservations/me', null, token)
+  return token
 }
 
 const ADMIN = 'admin', PRO = 'pro1', CLIENT = 'client1'
@@ -164,7 +175,13 @@ const installer = async ({ fiche, prestations, equipe, valider = true, proprieta
 
   const employes = []
   for (const membre of equipe) {
-    const { fait, ...profil } = membre
+    const { fait, compte, ...profil } = membre
+    // Un membre d'équipe doté d'un compte obtient des droits : PRATICIEN voit
+    // son planning, GESTIONNAIRE administre le salon comme le propriétaire.
+    if (compte) {
+      await compteProfessionnel(compte)
+      profil.email = compte.email
+    }
     const e = await appel('POST', `/api/pro/salons/${salon.id}/employes`, profil, tokenPro)
     await appel('PUT', `/api/pro/employes/${e.id}/prestations`,
       { prestationIds: fait.map((nom) => parNom[nom].id) }, tokenPro)
@@ -178,8 +195,11 @@ const installer = async ({ fiche, prestations, equipe, valider = true, proprieta
 
   const etat = valider ? 'en ligne' : 'EN ATTENTE de validation'
   const qui = proprietaire ? proprietaire.identifiant : PRO
+  const equipeDecrite = employes
+    .map((e) => e.role === 'GESTIONNAIRE' ? `${e.prenom} (gestionnaire)` : e.prenom)
+    .join(', ')
   vert(`${fiche.nom} — ${fiche.ville} · ${prestations.length} prestations · `
-     + `${employes.map((e) => e.prenom).join(', ')} · ${etat} · compte ${qui}`)
+     + `${equipeDecrite} · ${etat} · compte ${qui}`)
   return { salon, prestations: parNom, employes, token: tokenPro, compte: qui }
 }
 
@@ -200,12 +220,20 @@ const darZine = await installer({
     { nom: 'Balayage', categorie: 'Couleur', prix: 650, dureeMinutes: 120 },
   ],
   equipe: [
+    // Sofia a un compte PRATICIEN : elle consulte son planning, rien de plus.
     { prenom: 'Sofia', nom: 'Alami', titre: 'Coloriste',
-      fait: ['Coupe femme', 'Brushing', 'Balayage'] },
+      fait: ['Coupe femme', 'Brushing', 'Balayage'],
+      compte: { identifiant: 'equipe.sofia', prenom: 'Sofia', nom: 'Alami',
+                email: 'sofia@darzine.ma' } },
     // Youssef ne fait pas la couleur : le moteur ne doit jamais le proposer
     // sur le balayage.
+    // Youssef est GESTIONNAIRE : Leila lui délègue la boutique. Il administre
+    // tout sauf la suppression du salon, et sans connaître son mot de passe.
     { prenom: 'Youssef', nom: 'Tazi', titre: 'Coiffeur',
-      fait: ['Coupe femme', 'Brushing'] },
+      fait: ['Coupe femme', 'Brushing'],
+      role: 'GESTIONNAIRE',
+      compte: { identifiant: 'equipe.youssef', prenom: 'Youssef', nom: 'Tazi',
+                email: 'youssef@darzine.ma' } },
   ],
 })
 
@@ -385,5 +413,9 @@ for (const lieu of [atlas, darZine, nails, firdaws, anfa]) {
   console.log(`    ${lieu.compte.padEnd(26)} ${lieu.salon.nom}`)
 }
 console.log()
-console.log('  Chaque salon a son propre propriétaire : connecté avec un compte, on ne')
-console.log('  voit que son salon. C\'est ce cloisonnement qu\'il faut vérifier.')
+console.log('  \x1b[36mMembres d\'équipe de Dar Zine\x1b[0m — même convention de mot de passe')
+console.log('    equipe.sofia               PRATICIEN    · son planning seulement')
+console.log('    equipe.youssef             GESTIONNAIRE · administre le salon, sans le supprimer')
+console.log()
+console.log('  Chaque salon a son propre propriétaire, et Dar Zine illustre la délégation :')
+console.log('  Youssef gère la boutique sans connaître le mot de passe de Leila.')

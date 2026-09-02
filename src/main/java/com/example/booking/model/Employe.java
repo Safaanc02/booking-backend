@@ -1,5 +1,6 @@
 package com.example.booking.model;
 
+import com.example.booking.model.enums.RoleEmploye;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,10 +26,21 @@ public class Employe {
     @JoinColumn(name = "salon_id")
     private Salon salon;
 
-    /** Nul tant que la personne n'a pas de compte Keycloak. */
+    /**
+     * Compte rattaché, nul tant que la personne ne s'est pas connectée.
+     *
+     * C'est ce lien qui donne des droits : sans lui, la fiche n'est qu'une
+     * ligne d'agenda.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    /** Ce que la personne peut faire, une fois son compte rattaché. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private RoleEmploye role = RoleEmploye.PRATICIEN;
 
     @Column(nullable = false)
     private String prenom;

@@ -124,7 +124,9 @@ public class PublicCatalogService {
     }
 
     private EmployeResponse toResponse(Employe e, Integer dureeMinutes) {
+        // Le rôle et le compte rattaché ne sortent pas côté public : ils
+        // n'intéressent que le salon.
         return new EmployeResponse(e.getId(), e.getPrenom(), e.getNom(),
-                e.getTitre(), e.getPhotoUrl(), dureeMinutes);
+                e.getTitre(), e.getPhotoUrl(), dureeMinutes, null, null);
     }
 }

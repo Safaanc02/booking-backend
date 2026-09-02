@@ -34,7 +34,7 @@ public class PrestationController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerPrestation(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererPrestation(#id, authentication)")
     public ResponseEntity<PrestationResponse> getPrestationById(@PathVariable Long id) {
         return ResponseEntity.ok(prestationService.getPrestationById(id));
     }
@@ -45,13 +45,13 @@ public class PrestationController {
      * /api/public/salons/{id}, qui n'expose que les salons ACTIF.
      */
     @GetMapping("/salon/{salonId}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<List<PrestationResponse>> getBySalon(@PathVariable Long salonId) {
         return ResponseEntity.ok(prestationService.getBySalon(salonId));
     }
 
     @PostMapping("/salon/{salonId}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#salonId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
     public ResponseEntity<PrestationResponse> createPrestation(
             @PathVariable Long salonId,
             @Valid @RequestBody PrestationRequest request
@@ -61,7 +61,7 @@ public class PrestationController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerPrestation(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererPrestation(#id, authentication)")
     public ResponseEntity<PrestationResponse> updatePrestation(
             @PathVariable Long id,
             @Valid @RequestBody PrestationRequest request
@@ -70,7 +70,7 @@ public class PrestationController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerPrestation(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererPrestation(#id, authentication)")
     public ResponseEntity<Void> deletePrestation(@PathVariable Long id) {
         prestationService.deletePrestation(id);
         return ResponseEntity.noContent().build();

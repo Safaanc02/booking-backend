@@ -14,6 +14,7 @@ import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.EmployeRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.ReservationRepository;
+import com.example.booking.config.CustomPermissionEvaluator;
 import com.example.booking.repository.SalonRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -38,6 +39,7 @@ public class AgendaService {
     private final EmployePrestationRepository employePrestationRepository;
     private final DisponibiliteService disponibilites;
     private final CurrentUserService currentUser;
+    private final CustomPermissionEvaluator droits;
     private final ApplicationEventPublisher evenements;
 
     public AgendaService(ReservationRepository reservationRepository,
@@ -47,6 +49,7 @@ public class AgendaService {
                          EmployePrestationRepository employePrestationRepository,
                          DisponibiliteService disponibilites,
                          CurrentUserService currentUser,
+                         CustomPermissionEvaluator droits,
                          ApplicationEventPublisher evenements) {
         this.reservationRepository = reservationRepository;
         this.salonRepository = salonRepository;
@@ -55,6 +58,7 @@ public class AgendaService {
         this.employePrestationRepository = employePrestationRepository;
         this.disponibilites = disponibilites;
         this.currentUser = currentUser;
+        this.droits = droits;
         this.evenements = evenements;
     }
 
@@ -66,6 +70,38 @@ public class AgendaService {
         Instant fin = date.plusDays(Math.max(1, jours)).atStartOfDay(zone).toInstant();
 
         return reservationRepository.agenda(salonId, debut, fin).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * Planning personnel du compte connecté.
+     *
+     * Un praticien n'administre rien, mais doit pouvoir consulter ses propres
+     * rendez-vous. Il n'était jusqu'ici titulaire d'aucun droit : la seule
+     * façon de voir son planning était d'emprunter le compte du propriétaire.
+     *
+     * Renvoie les rendez-vous de toutes ses fiches, un même compte pouvant
+     * travailler dans plusieurs salons.
+     */
+    @Transactional(readOnly = true)
+    public List<AgendaResponse> monPlanning(LocalDate date, int jours) {
+        String keycloakId = currentUser.currentKeycloakId()
+                .orElseThrow(() -> new SecurityException("Authentification requise"));
+
+        List<Long> mesFiches = employeRepository.mesFiches(keycloakId).stream()
+                .map(Employe::getId)
+                .toList();
+        if (mesFiches.isEmpty()) {
+            // Compte sans fiche : aucun planning, ce n'est pas une erreur.
+            return List.of();
+        }
+
+        var zone = disponibilites.zone();
+        Instant debut = date.atStartOfDay(zone).toInstant();
+        Instant fin = date.plusDays(Math.max(1, jours)).atStartOfDay(zone).toInstant();
+
+        return reservationRepository.planningDesPraticiens(mesFiches, debut, fin).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -153,13 +189,14 @@ public class AgendaService {
 
     /* ---------- Helpers ---------- */
 
+    /**
+     * Délègue à l'évaluateur : propriétaire, gestionnaire délégué ou
+     * administrateur. Refaire le calcul ici serait une troisième copie de la
+     * même règle.
+     */
     private void verifierProprietaireSalon(Salon salon) {
-        if (currentUser.isAdmin()) return;
-        String keycloakId = currentUser.currentKeycloakId().orElse(null);
-        boolean proprietaire = salon != null && salon.getOwner() != null
-                && keycloakId != null && keycloakId.equals(salon.getOwner().getKeycloakId());
-        if (!proprietaire) {
-            throw new SecurityException("Vous n'êtes pas propriétaire de ce salon");
+        if (!droits.peutGererSalon(salon.getId())) {
+            throw new SecurityException("Vous n'avez pas les droits de gestion sur ce salon");
         }
     }
 

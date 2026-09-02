@@ -11,12 +11,15 @@ import com.example.booking.model.EmployePrestation;
 import com.example.booking.model.HoraireOuverture;
 import com.example.booking.model.Prestation;
 import com.example.booking.model.Salon;
+import com.example.booking.model.User;
+import com.example.booking.model.enums.RoleEmploye;
 import com.example.booking.repository.AbsenceRepository;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.EmployeRepository;
 import com.example.booking.repository.HoraireOuvertureRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.SalonRepository;
+import com.example.booking.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,19 +38,22 @@ public class EquipeService {
     private final AbsenceRepository absenceRepository;
     private final SalonRepository salonRepository;
     private final PrestationRepository prestationRepository;
+    private final UserRepository userRepository;
 
     public EquipeService(EmployeRepository employeRepository,
                          EmployePrestationRepository employePrestationRepository,
                          HoraireOuvertureRepository horaireRepository,
                          AbsenceRepository absenceRepository,
                          SalonRepository salonRepository,
-                         PrestationRepository prestationRepository) {
+                         PrestationRepository prestationRepository,
+                         UserRepository userRepository) {
         this.employeRepository = employeRepository;
         this.employePrestationRepository = employePrestationRepository;
         this.horaireRepository = horaireRepository;
         this.absenceRepository = absenceRepository;
         this.salonRepository = salonRepository;
         this.prestationRepository = prestationRepository;
+        this.userRepository = userRepository;
     }
 
     /* ---------- Employés ---------- */
@@ -69,6 +75,8 @@ public class EquipeService {
                 .titre(req.getTitre())
                 .photoUrl(req.getPhotoUrl())
                 .ordre(req.getOrdre() != null ? req.getOrdre() : 0)
+                .role(req.getRole() != null ? req.getRole() : RoleEmploye.PRATICIEN)
+                .user(compteDepuisEmail(req.getEmail()))
                 .actif(true)
                 .build();
 
@@ -82,6 +90,9 @@ public class EquipeService {
         e.setTitre(req.getTitre());
         e.setPhotoUrl(req.getPhotoUrl());
         if (req.getOrdre() != null) e.setOrdre(req.getOrdre());
+        if (req.getRole() != null) e.setRole(req.getRole());
+        // Un email vide détache le compte : c'est ainsi qu'on retire un accès.
+        e.setUser(compteDepuisEmail(req.getEmail()));
         return toResponse(employeRepository.save(e));
     }
 
@@ -198,13 +209,31 @@ public class EquipeService {
 
     /* ---------- Helpers ---------- */
 
+    /**
+     * Compte correspondant à cet email, ou null si l'email est vide.
+     *
+     * Le compte doit préexister : il est créé dans Keycloak, et l'application
+     * n'en garde un miroir qu'après une première connexion. Refuser
+     * explicitement vaut mieux qu'un rattachement silencieusement ignoré.
+     */
+    private User compteDepuisEmail(String email) {
+        if (email == null || email.isBlank()) return null;
+        return userRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Aucun compte pour " + email.trim()
+                        + ". La personne doit s'être connectée au moins une fois."));
+    }
+
     private Employe chargerEmploye(Long id) {
         return employeRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Praticien introuvable : " + id));
     }
 
     private EmployeResponse toResponse(Employe e) {
-        return new EmployeResponse(e.getId(), e.getPrenom(), e.getNom(), e.getTitre(), e.getPhotoUrl(), null);
+        return new EmployeResponse(
+                e.getId(), e.getPrenom(), e.getNom(), e.getTitre(), e.getPhotoUrl(), null,
+                e.getRole() != null ? e.getRole().name() : null,
+                e.getUser() != null ? e.getUser().getEmail() : null);
     }
 
     private HoraireResponse toResponse(HoraireOuverture h) {

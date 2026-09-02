@@ -6,5 +6,9 @@ public record EmployeResponse(
         String nom,
         String titre,
         String photoUrl,
-        Integer dureeMinutes
+        Integer dureeMinutes,
+        /** PRATICIEN ou GESTIONNAIRE. */
+        String role,
+        /** Email du compte rattaché, nul si la fiche n'a pas d'accès. */
+        String compteEmail
 ) {}

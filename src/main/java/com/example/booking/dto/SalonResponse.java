@@ -27,4 +27,9 @@ public class SalonResponse {
     private String statut;
     private Integer delaiAnnulationHeures;
     private Long ownerId;
+    /**
+     * Lien du compte courant avec ce salon : PROPRIETAIRE ou GESTIONNAIRE.
+     * Nul en lecture publique — cela ne concerne que le back-office.
+     */
+    private String monRole;
 }

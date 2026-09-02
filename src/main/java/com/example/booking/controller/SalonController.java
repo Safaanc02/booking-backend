@@ -46,7 +46,7 @@ public class SalonController {
      * /api/public/salons/{id}, qui filtre sur ACTIF.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#id, authentication)")
     public ResponseEntity<SalonResponse> getSalonById(@PathVariable Long id) {
         return salonService.getSalonById(id)
                 .map(salon -> ResponseEntity.ok(salonService.toResponse(salon)))
@@ -67,7 +67,7 @@ public class SalonController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#id, authentication)")
     public ResponseEntity<SalonResponse> updateSalon(
             @PathVariable Long id,
             @Valid @RequestBody SalonRequest request
@@ -82,7 +82,7 @@ public class SalonController {
      * 🔹 Supprimer un salon (ADMIN ou propriétaire du salon)
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @permission.isOwnerSalon(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#id, authentication)")
     public ResponseEntity<Void> deleteSalon(@PathVariable Long id) {
         salonService.deleteSalon(id);
         return ResponseEntity.noContent().build();

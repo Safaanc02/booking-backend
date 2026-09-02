@@ -9,6 +9,7 @@ import com.example.booking.model.enums.StatutAvis;
 import com.example.booking.model.enums.StatutReservation;
 import com.example.booking.repository.AvisRepository;
 import com.example.booking.repository.ReservationRepository;
+import com.example.booking.config.CustomPermissionEvaluator;
 import com.example.booking.repository.SalonRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -29,15 +30,18 @@ public class AvisService {
     private final ReservationRepository reservationRepository;
     private final SalonRepository salonRepository;
     private final CurrentUserService currentUser;
+    private final CustomPermissionEvaluator droits;
 
     public AvisService(AvisRepository avisRepository,
                        ReservationRepository reservationRepository,
                        SalonRepository salonRepository,
-                       CurrentUserService currentUser) {
+                       CurrentUserService currentUser,
+                       CustomPermissionEvaluator droits) {
         this.avisRepository = avisRepository;
         this.reservationRepository = reservationRepository;
         this.salonRepository = salonRepository;
         this.currentUser = currentUser;
+        this.droits = droits;
     }
 
     /* ---------- Lecture ---------- */
@@ -159,13 +163,14 @@ public class AvisService {
                 .orElseThrow(() -> new NoSuchElementException("Avis introuvable : " + id));
     }
 
+    /**
+     * Délègue à l'évaluateur : propriétaire, gestionnaire délégué ou
+     * administrateur. Refaire le calcul ici serait une troisième copie de la
+     * même règle.
+     */
     private void verifierProprietaireSalon(Salon salon) {
-        if (currentUser.isAdmin()) return;
-        String keycloakId = currentUser.currentKeycloakId().orElse(null);
-        boolean proprietaire = salon.getOwner() != null && keycloakId != null
-                && keycloakId.equals(salon.getOwner().getKeycloakId());
-        if (!proprietaire) {
-            throw new SecurityException("Vous n'êtes pas propriétaire de ce salon");
+        if (!droits.peutGererSalon(salon.getId())) {
+            throw new SecurityException("Vous n'avez pas les droits de gestion sur ce salon");
         }
     }
 

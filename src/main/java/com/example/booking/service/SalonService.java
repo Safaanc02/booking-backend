@@ -6,6 +6,7 @@ import com.example.booking.model.Salon;
 import com.example.booking.model.User;
 import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.model.enums.SalonStatut;
+import com.example.booking.config.CustomPermissionEvaluator;
 import com.example.booking.repository.SalonRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,10 +23,14 @@ public class SalonService {
 
     private final SalonRepository salonRepository;
     private final CurrentUserService currentUser;
+    private final CustomPermissionEvaluator droits;
 
-    public SalonService(SalonRepository salonRepository, CurrentUserService currentUser) {
+    public SalonService(SalonRepository salonRepository,
+                        CurrentUserService currentUser,
+                        CustomPermissionEvaluator droits) {
         this.salonRepository = salonRepository;
         this.currentUser = currentUser;
+        this.droits = droits;
     }
 
     /* ---------- Lecture ---------- */
@@ -40,12 +45,22 @@ public class SalonService {
         return salonRepository.findAll(pageable).map(this::toResponse);
     }
 
-    /** Les salons du professionnel connecté. */
+    /**
+     * Salons que le compte connecté peut administrer : les siens, et ceux
+     * dont la gestion lui a été déléguée.
+     */
     @Transactional(readOnly = true)
     public List<SalonResponse> mesSalons() {
         User me = currentUser.getOrCreate();
-        return salonRepository.findByOwnerIdOrderByNomAsc(me.getId())
-                .stream().map(this::toResponse).toList();
+        return salonRepository.queJePeuxGerer(me.getKeycloakId()).stream()
+                .map(salon -> {
+                    SalonResponse r = toResponse(salon);
+                    boolean proprietaire = salon.getOwner() != null
+                            && salon.getOwner().getId().equals(me.getId());
+                    r.setMonRole(proprietaire ? "PROPRIETAIRE" : "GESTIONNAIRE");
+                    return r;
+                })
+                .toList();
     }
 
     /* ---------- Écriture ---------- */
@@ -77,7 +92,8 @@ public class SalonService {
 
     public Optional<SalonResponse> updateSalon(Long id, SalonRequest request) {
         Salon salon = charger(id);
-        verifierProprietaire(salon);
+        // Modification : le gestionnaire délégué y a droit comme le propriétaire.
+        verifierPeutGerer(salon);
 
         salon.setNom(request.getNom());
         salon.setDescription(request.getDescription());
@@ -108,7 +124,9 @@ public class SalonService {
 
     public void deleteSalon(Long id) {
         Salon salon = charger(id);
-        verifierProprietaire(salon);
+        // Suppression : propriétaire seulement. Déléguer la gestion d'une
+        // boutique ne doit pas donner le droit de l'effacer.
+        verifierProprietaireStrict(salon);
         salonRepository.delete(salon);
     }
 
@@ -119,8 +137,25 @@ public class SalonService {
                 .orElseThrow(() -> new NoSuchElementException("Salon introuvable : " + id));
     }
 
-    /** Second rempart derrière le @PreAuthorize : celui-ci peut être oublié sur une nouvelle route. */
-    private void verifierProprietaire(Salon salon) {
+    /**
+     * Second rempart derrière le @PreAuthorize du contrôleur : celui-ci peut
+     * être oublié sur une nouvelle route, le service est le dernier point de
+     * passage. Délègue à l'évaluateur plutôt que de refaire le calcul —
+     * dupliquer cette règle a déjà produit un bug.
+     */
+    private void verifierPeutGerer(Salon salon) {
+        if (!droits.peutGererSalon(salon.getId())) {
+            throw new SecurityException("Vous n'avez pas les droits de gestion sur ce salon");
+        }
+    }
+
+    /**
+     * Propriétaire ou administrateur, à l'exclusion des gestionnaires délégués.
+     *
+     * Confier la gestion d'une boutique ne doit pas donner le droit de
+     * l'effacer : c'est la seule opération que la délégation n'emporte pas.
+     */
+    private void verifierProprietaireStrict(Salon salon) {
         if (currentUser.isAdmin()) return;
 
         String keycloakId = currentUser.currentKeycloakId().orElse(null);
@@ -129,7 +164,7 @@ public class SalonService {
                 && keycloakId.equals(salon.getOwner().getKeycloakId());
 
         if (!proprietaire) {
-            throw new SecurityException("Vous n'êtes pas propriétaire de ce salon");
+            throw new SecurityException("Seul le propriétaire peut supprimer ce salon");
         }
     }
 

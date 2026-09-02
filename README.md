@@ -79,6 +79,33 @@ rôle `pro`.
 | `pro.firdaws` | pro | Hammam Al Firdaws (Rabat) |
 | `pro.anfa` | pro | Salon Anfa — en attente de validation |
 
+### Membres d'équipe de Dar Zine
+
+| Identifiant | Rôle | Peut |
+|---|---|---|
+| `equipe.sofia` | PRATICIEN | Consulter **son** planning, rien d'autre |
+| `equipe.youssef` | GESTIONNAIRE | Administrer Dar Zine comme Leila — sauf le supprimer |
+
+Une fiche d'équipe rattachée à un compte donne des droits. Deux niveaux :
+
+- **PRATICIEN** — `/mon-planning`. Aucun accès à l'agenda du salon ni aux
+  réglages.
+- **GESTIONNAIRE** — délégation complète : catalogue, équipe, horaires,
+  absences, agenda, avis. Ni suppression du salon, ni changement de
+  propriétaire. C'est ce qui permet à un gérant d'enseigne de confier une
+  boutique **sans prêter son mot de passe**.
+
+Une fiche sans compte rattaché reste une simple ligne d'agenda, sans aucun
+droit — l'écran d'équipe l'indique explicitement.
+
+Le compte doit exister avant le rattachement : il est créé dans Keycloak, et
+l'application n'en garde un miroir qu'après une première connexion. Le
+rattachement se fait ensuite par email.
+
+⚠️ Un membre d'équipe a besoin du rôle Keycloak `pro` pour atteindre
+`/api/pro/**`. Le rôle applicatif (PRATICIEN ou GESTIONNAIRE) se joue ensuite
+ressource par ressource.
+
 **Un propriétaire par salon**, volontairement : connecté avec l'un de ces
 comptes on ne voit que son propre salon, et toute tentative sur un autre
 renvoie 403. C'est le cloisonnement le plus important à vérifier — un jeu de

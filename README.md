@@ -38,6 +38,28 @@ npm run dev
 > Le port PostgreSQL est **5433** et non 5432, pour cohabiter avec d'autres projets
 > susceptibles d'occuper le port standard. Il se change via `DB_PORT` dans `.env`.
 
+## Jeu de données de démonstration
+
+Une base vide ne permet pas d'essayer grand-chose : il n'y a aucun salon à
+réserver. Le script installe quatre salons validés dans trois villes, un
+cinquième en attente de validation, leurs équipes, catalogues et horaires,
+puis des rendez-vous passés, des réservations à venir et quelques avis.
+
+```bash
+node scripts/donnees-demo.mjs
+```
+
+Tout passe par l'API, jamais par des `INSERT` directs : le jeu de données ne
+peut donc ni contredire les règles métier, ni dériver du schéma.
+
+### Remise à zéro
+
+```bash
+./scripts/reinitialiser.sh          # détruit le volume, relance les conteneurs
+./mvnw spring-boot:run              # Flyway reconstruit le schéma
+node scripts/donnees-demo.mjs       # dans un autre terminal
+```
+
 ## Comptes de test
 
 Créés automatiquement par l'import du realm Keycloak (`keycloak/booking-realm-realm.json`).
@@ -85,7 +107,11 @@ cd booking-frontend && npm run verifier:avis    # cycle d'un avis client
 ```
 
 Les scripts de navigateur supposent la stack démarrée et au moins un salon
-ACTIF paramétré. `verifier:tunnel` a besoin de Mailpit pour la section
+ACTIF paramétré — le jeu de démonstration suffit.
+
+⚠️ Ils **écrivent** : réservations, avis, et un salon supplémentaire pour
+`verifier:pro`. Relancer `donnees-demo.mjs` après une remise à zéro rend un
+état propre. `verifier:tunnel` a besoin de Mailpit pour la section
 « annulation depuis l'email » ; sans lui, elle s'annonce non exécutée.
 
 > **Si `./mvnw test` semble bloqué**, c'est presque toujours la sonde

@@ -17,23 +17,23 @@ Deux dépôts Git distincts, côte à côte :
 
 Prérequis : Docker, JDK 17+, Node 20+.
 
+Trois terminaux.
+
 ```bash
-# Depuis booking-backend/
+# ── Terminal 1 — infrastructure et API, depuis booking-backend/
+cp .env.example .env          # puis adapter les mots de passe
+docker compose up -d          # PostgreSQL (5433), Keycloak (8081), Mailpit (8025)
+./scripts/lancer-api.sh       # API sur 8080, charge .env
 
-# 1. Infrastructure — PostgreSQL (5433) et Keycloak (8081)
-cp .env.example .env        # puis adapter les mots de passe
-docker compose up -d
-
-# 2. API — port 8080
-DB_URL="jdbc:postgresql://localhost:5433/beauty_booking" \
-DB_USER=booking_user DB_PASSWORD=beauty123 \
-./mvnw spring-boot:run
-
-# 3. Interface — port 5173
-cd ../booking-frontend
+# ── Terminal 2 — interface, depuis booking-frontend/
 npm install
-npm run dev
+npm run dev                   # http://localhost:5173
+
+# ── Terminal 3 — jeu de données, depuis booking-backend/
+node scripts/donnees-demo.mjs
 ```
+
+Sans la troisième étape, l'application est vide : aucun salon à réserver.
 
 > Le port PostgreSQL est **5433** et non 5432, pour cohabiter avec d'autres projets
 > susceptibles d'occuper le port standard. Il se change via `DB_PORT` dans `.env`.

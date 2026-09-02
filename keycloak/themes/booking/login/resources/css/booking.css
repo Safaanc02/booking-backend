@@ -1,0 +1,472 @@
+/*
+ * Écran d'authentification Booking.ma
+ *
+ * Reprend le vocabulaire visuel de l'application — même bordeaux, même fond
+ * ivoire, mêmes rayons de courbure — pour que la connexion ne donne pas
+ * l'impression de quitter le site.
+ *
+ * Écrit à la main, sans framework : la page est servie par Keycloak, pas par
+ * Vite. Y importer Tailwind supposerait une étape de compilation dans le
+ * thème, pour trois écrans.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Jetons — alignés sur src/index.css de l'application               */
+/* ------------------------------------------------------------------ */
+:root {
+  --brand-50:  #fdf3f4;
+  --brand-100: #fbe8ea;
+  --brand-200: #f6d0d6;
+  --brand-400: #d98693;
+  --brand-500: #c2566a;
+  --brand-600: #a83f54;
+  --brand-700: #8b3244;
+
+  --ivoire:   #faf9f7;
+  --encre:    #1c1917;
+  --gris-500: #78716c;
+  --gris-400: #a8a29e;
+  --gris-200: #e7e5e4;
+  --gris-100: #f5f5f4;
+
+  --rayon:       12px;
+  --rayon-carte: 16px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ossature                                                           */
+/* ------------------------------------------------------------------ */
+.b-html {
+  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
+}
+.b-html *, .b-html *::before, .b-html *::after { box-sizing: inherit; }
+
+.b-body {
+  margin: 0;
+  min-height: 100vh;
+  /* Fond explicite : sans cela la page emprunte celui du navigateur, qui
+     diffère en thème sombre et casse la continuité avec le site. */
+  background: linear-gradient(180deg, var(--brand-50) 0%, var(--ivoire) 42%);
+  color: var(--encre);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.b-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 16px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Marque                                                             */
+/* ------------------------------------------------------------------ */
+.b-header { margin-bottom: 22px; }
+
+.b-brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+.b-brand-texte { color: var(--encre); }
+.b-brand-point  { color: var(--brand-600); }
+
+/* ------------------------------------------------------------------ */
+/* Carte                                                              */
+/* ------------------------------------------------------------------ */
+.b-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--rayon-carte);
+  padding: 30px 28px 26px;
+  /* Ombre très douce : la carte doit se détacher du fond sans flotter. */
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04),
+              0 8px 24px -12px rgba(28, 25, 23, 0.10);
+}
+
+#kc-page-title {
+  margin: 0 0 4px;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.b-card-header { margin-bottom: 18px; }
+
+/*
+ * Mention « Champs requis » sur l'écran d'inscription.
+ *
+ * base la place AVANT le titre, ce qui donne un écran commençant par une note
+ * de bas de page. On la renvoie après, en discret.
+ */
+.b-content { display: flex; flex-direction: column; }
+.b-content > .col-md-10 { order: 1; }
+.b-content > .subtitle { order: 2; margin-top: 2px; }
+
+.subtitle { font-size: 13px; color: var(--gris-400); }
+.subtitle .required { color: var(--brand-600); }
+
+/* Nom d'utilisateur rappelé sur les écrans de second facteur */
+#kc-username {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--gris-500);
+}
+#kc-username .b-bouton { margin-left: 8px; }
+
+/* ------------------------------------------------------------------ */
+/* Champs                                                             */
+/* ------------------------------------------------------------------ */
+.b-form { margin: 0; }
+
+.b-field { margin-bottom: 16px; }
+
+/*
+ * Label et astérisque de champ requis.
+ *
+ * base rend `<div class="b-label-zone"><label>…</label>*</div>` : l'astérisque
+ * est un nœud de texte nu, placé APRÈS le label. Avec un label en display:block
+ * il basculait à la ligne suivante, comme s'il s'agissait d'un second champ.
+ * Une rangée flex les remet côte à côte, et la couleur de la zone teinte
+ * l'astérisque sans qu'on puisse le cibler directement.
+ */
+.b-label-zone:not(.subtitle) {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-bottom: 6px;
+  color: var(--brand-600);
+}
+
+.b-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gris-500);
+}
+.b-label-zone .b-label { margin-bottom: 0; }
+
+.b-input {
+  display: block;
+  width: 100%;
+  padding: 11px 13px;
+  font: inherit;
+  color: var(--encre);
+  background: #fff;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--rayon);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.b-input::placeholder { color: var(--gris-400); }
+.b-input:hover { border-color: #d6d3d1; }
+/* Le halo de focus reste discret : un champ vide entouré de rose vif se lit
+   comme une erreur de saisie, ce qui inquiète avant même d'avoir tapé. */
+.b-input:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(168, 63, 84, 0.10);
+}
+.b-input[aria-invalid="true"] {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px #fee2e2;
+}
+
+.b-erreur {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.b-aide {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--gris-400);
+}
+
+/* ------------------------------------------------------------------ */
+/* Mot de passe : bouton de révélation                                */
+/* ------------------------------------------------------------------ */
+.b-input-group { position: relative; display: block; }
+.b-input-group .b-input { padding-right: 44px; }
+
+.b-oeil {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 9px;
+  color: var(--gris-400);
+  cursor: pointer;
+}
+.b-oeil:hover { color: var(--gris-500); background: var(--gris-100); }
+.b-oeil:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 1px; }
+
+/* Icônes dessinées en CSS : pas de dépendance à une police d'icônes,
+   dont le chargement retarderait l'affichage du formulaire. */
+.b-oeil i { display: block; width: 18px; height: 18px; position: relative; }
+.b-oeil-montrer::before,
+.b-oeil-cacher::before {
+  content: "";
+  position: absolute;
+  inset: 3px 0;
+  border: 1.6px solid currentColor;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+}
+.b-oeil-montrer::after,
+.b-oeil-cacher::after {
+  content: "";
+  position: absolute;
+  top: 6px; left: 6px;
+  width: 6px; height: 6px;
+  border: 1.6px solid currentColor;
+  border-radius: 50%;
+}
+/* État « caché » : barre oblique par-dessus l'œil. */
+.b-oeil-cacher { box-shadow: none; }
+.b-oeil-cacher::before { opacity: .55; }
+.b-oeil-cacher i::after { content: ""; }
+.b-oeil .b-oeil-cacher {
+  background: linear-gradient(to top left,
+    transparent calc(50% - 1px), currentColor calc(50% - 1px),
+    currentColor calc(50% + 1px), transparent calc(50% + 1px));
+}
+
+/* ------------------------------------------------------------------ */
+/* Ligne d'options : « rester connecté » et « mot de passe oublié »    */
+/* ------------------------------------------------------------------ */
+.b-reglages { margin-bottom: 20px; }
+
+.b-options,
+#kc-form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.b-reglages { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+.checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--gris-500);
+  cursor: pointer;
+}
+.checkbox input[type="checkbox"] { accent-color: var(--brand-600); width: 15px; height: 15px; }
+
+.b-case-zone { display: flex; align-items: center; gap: 8px; }
+.b-case { accent-color: var(--brand-600); width: 15px; height: 15px; }
+.b-case-label { font-size: 14px; color: var(--gris-500); }
+.b-case-label--inactif { color: var(--gris-400); }
+
+.b-options-zone a,
+#kc-info a,
+.b-inscription a,
+#kc-registration a,
+#kc-registration-form a {
+  color: var(--brand-700);
+  text-decoration: none;
+  font-size: 14px;
+}
+.b-options-zone a:hover,
+#kc-info a:hover,
+.b-inscription a:hover,
+#kc-registration a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------------ */
+/* Boutons                                                            */
+/* ------------------------------------------------------------------ */
+.b-bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--rayon);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color .15s, border-color .15s;
+}
+.b-bouton--principal { background: var(--brand-600); color: #fff; }
+.b-bouton--principal:hover { background: var(--brand-700); }
+.b-bouton--secondaire {
+  background: #fff;
+  color: var(--encre);
+  border-color: var(--gris-200);
+}
+.b-bouton--secondaire:hover { background: var(--gris-100); }
+.b-bouton--pleine-largeur { width: 100%; }
+.b-bouton--grand { padding: 12px 22px; }
+.b-bouton--inactif { opacity: .55; pointer-events: none; }
+.b-bouton:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 2px; }
+.b-bouton[disabled] { opacity: .6; cursor: default; }
+
+.b-actions { margin-top: 4px; }
+/* Les écrans à deux boutons (annuler / valider) les alignent côte à côte. */
+.b-actions:has(> .b-bouton + .b-bouton) { display: flex; gap: 10px; }
+.b-actions:has(> .b-bouton + .b-bouton) .b-bouton { flex: 1; }
+
+/* ------------------------------------------------------------------ */
+/* Messages                                                           */
+/* ------------------------------------------------------------------ */
+.b-alerte {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 11px 14px;
+  font-size: 14px;
+  border: 1px solid transparent;
+  border-radius: var(--rayon);
+}
+.b-alerte-titre { margin: 0; font-weight: 500; }
+.b-alerte::before { flex: none; font-weight: 700; }
+
+.b-alerte--erreur { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.b-alerte--erreur::before { content: "!"; }
+.b-alerte--avertissement { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.b-alerte--avertissement::before { content: "!"; }
+.b-alerte--succes { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.b-alerte--succes::before { content: "✓"; }
+.b-alerte--info { background: var(--brand-50); border-color: var(--brand-200); color: var(--brand-700); }
+.b-alerte--info::before { content: "i"; font-style: italic; }
+
+/* ------------------------------------------------------------------ */
+/* Pied de carte : inscription, retour                                */
+/* ------------------------------------------------------------------ */
+/* Le filet ne va que sur le conteneur extérieur : #kc-info enveloppe
+   #kc-info-wrapper, et styler les deux dessinait une double ligne. */
+#kc-info {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--gris-100);
+  font-size: 14px;
+  color: var(--gris-500);
+  text-align: center;
+}
+#kc-info-wrapper { margin: 0; }
+
+.b-icone-retour::before { content: "← "; }
+
+/* ------------------------------------------------------------------ */
+/* Fournisseurs d'identité                                            */
+/* ------------------------------------------------------------------ */
+.b-social {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--gris-100);
+}
+.b-social-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.b-social-liste--grille { grid-template-columns: 1fr 1fr; }
+.b-social-item { margin: 0; }
+.b-social-nom { font-weight: 500; }
+
+/* ------------------------------------------------------------------ */
+/* Sélecteur de langue                                                */
+/*                                                                    */
+/* Structure imposée par base :                                       */
+/*   #kc-locale > #kc-locale-wrapper > #kc-locale-dropdown            */
+/*     > button[aria-expanded] + ul                                   */
+/* La liste est repliée tant que aria-expanded vaut false — sans cette */
+/* règle elle s'affiche en permanence et recouvre la carte.            */
+/* ------------------------------------------------------------------ */
+#kc-locale {
+  position: absolute;
+  top: 14px;
+  inset-inline-end: 14px;
+  font-size: 14px;
+}
+
+#kc-locale-dropdown { position: relative; }
+
+#kc-current-locale-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  font: inherit;
+  color: var(--gris-500);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+}
+#kc-current-locale-link::after {
+  content: "";
+  width: 0; height: 0;
+  border-inline: 4px solid transparent;
+  border-top: 5px solid currentColor;
+}
+#kc-current-locale-link:hover {
+  color: var(--encre);
+  background: #fff;
+  border-color: var(--gris-200);
+}
+#kc-current-locale-link:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 1px; }
+
+.b-langue-liste {
+  position: absolute;
+  inset-inline-end: 0;
+  z-index: 10;
+  min-width: 170px;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--rayon);
+  box-shadow: 0 10px 28px -14px rgba(28, 25, 23, 0.22);
+}
+#kc-current-locale-link[aria-expanded="false"] + .b-langue-liste { display: none; }
+
+.b-langue-item { margin: 0; }
+.b-langue-lien {
+  display: block;
+  padding: 7px 10px;
+  border-radius: 8px;
+  color: var(--encre);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.b-langue-lien:hover { background: var(--gris-100); }
+
+/* ------------------------------------------------------------------ */
+/* Arabe : l'interface passe en lecture de droite à gauche            */
+/* ------------------------------------------------------------------ */
+[dir="rtl"] .b-input-group .b-input { padding-right: 13px; padding-left: 44px; }
+[dir="rtl"] .b-oeil { right: auto; left: 4px; }
+[dir="rtl"] .b-icone-retour::before { content: "→ "; }
+
+/* ------------------------------------------------------------------ */
+/* Écrans étroits                                                     */
+/* ------------------------------------------------------------------ */
+@media (max-width: 420px) {
+  .b-login { padding: 24px 12px; }
+  .b-card { padding: 24px 20px 22px; border-radius: 14px; }
+  #kc-page-title { font-size: 19px; }
+}

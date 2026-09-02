@@ -51,12 +51,23 @@ public class SalonService {
      */
     @Transactional(readOnly = true)
     public List<SalonResponse> mesSalons() {
-        User me = currentUser.getOrCreate();
-        return salonRepository.queJePeuxGerer(me.getKeycloakId()).stream()
+        /*
+         * On lit le « sub » du jeton, sans passer par getOrCreate().
+         *
+         * getOrCreate() insère le miroir de l'utilisateur s'il manque — une
+         * écriture, impossible dans une transaction en lecture seule. Cela ne
+         * se voyait pas tant que le filtre de synchronisation avait déjà créé
+         * le miroir plus tôt dans la requête ; le jour où il échouait, cette
+         * lecture répondait 500.
+         */
+        String keycloakId = currentUser.currentKeycloakId()
+                .orElseThrow(() -> new SecurityException("Authentification requise"));
+
+        return salonRepository.queJePeuxGerer(keycloakId).stream()
                 .map(salon -> {
                     SalonResponse r = toResponse(salon);
                     boolean proprietaire = salon.getOwner() != null
-                            && salon.getOwner().getId().equals(me.getId());
+                            && keycloakId.equals(salon.getOwner().getKeycloakId());
                     r.setMonRole(proprietaire ? "PROPRIETAIRE" : "GESTIONNAIRE");
                     return r;
                 })

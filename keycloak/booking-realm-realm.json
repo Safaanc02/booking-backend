@@ -10,16 +10,29 @@
   "duplicateEmailsAllowed": false,
   "verifyEmail": false,
   "internationalizationEnabled": true,
-  "supportedLocales": ["fr", "ar", "en"],
+  "supportedLocales": [
+    "fr",
+    "ar",
+    "en"
+  ],
   "defaultLocale": "fr",
   "accessTokenLifespan": 900,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "roles": {
     "realm": [
-      { "name": "admin",  "description": "Administrateur de la plateforme" },
-      { "name": "pro",    "description": "Professionnel : gère un ou plusieurs salons" },
-      { "name": "client", "description": "Client : réserve des prestations" }
+      {
+        "name": "admin",
+        "description": "Administrateur de la plateforme"
+      },
+      {
+        "name": "pro",
+        "description": "Professionnel : gère un ou plusieurs salons"
+      },
+      {
+        "name": "client",
+        "description": "Client : réserve des prestations"
+      }
     ]
   },
   "clients": [
@@ -66,8 +79,16 @@
       "email": "admin@booking.ma",
       "firstName": "Super",
       "lastName": "Admin",
-      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
-      "realmRoles": ["admin"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
     },
     {
       "username": "pro1",
@@ -76,8 +97,16 @@
       "email": "pro1@booking.ma",
       "firstName": "Karim",
       "lastName": "Benali",
-      "credentials": [{ "type": "password", "value": "pro1", "temporary": false }],
-      "realmRoles": ["pro"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "pro1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "pro"
+      ]
     },
     {
       "username": "client1",
@@ -86,8 +115,18 @@
       "email": "client1@booking.ma",
       "firstName": "Salma",
       "lastName": "Idrissi",
-      "credentials": [{ "type": "password", "value": "client1", "temporary": false }],
-      "realmRoles": ["client"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "client1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "client"
+      ]
     }
-  ]
+  ],
+  "loginTheme": "booking",
+  "accountTheme": "keycloak.v3"
 }

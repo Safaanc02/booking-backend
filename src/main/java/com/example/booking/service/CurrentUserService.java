@@ -92,6 +92,35 @@ public class CurrentUserService {
         String role     = roleFromJwt(jwt);
 
         Optional<User> existing = userRepository.findByKeycloakId(keycloakId);
+
+        if (existing.isEmpty()) {
+            /*
+             * Aucun miroir pour ce « sub », mais peut-être un pour cette même
+             * personne sous un ancien identifiant Keycloak.
+             *
+             * Le cas se produit dès qu'un realm est recréé — en développement,
+             * Keycloak en mode dev garde ses données en mémoire, donc chaque
+             * recréation du conteneur régénère tous les « sub ». Il se produit
+             * aussi en production si un compte est supprimé puis recréé.
+             *
+             * Sans cette adoption, l'insertion violait l'unicité de username :
+             * le filtre de synchronisation avalait l'erreur, puis la lecture
+             * suivante échouait en 500. Le compte devenait définitivement
+             * inutilisable, sans aucun moyen de s'en sortir.
+             */
+            Optional<User> memePersonne = username != null
+                    ? userRepository.findByUsername(username)
+                    : Optional.empty();
+            if (memePersonne.isEmpty() && email != null && !email.isBlank()) {
+                memePersonne = userRepository.findByEmail(email);
+            }
+            if (memePersonne.isPresent()) {
+                User adopte = memePersonne.get();
+                adopte.setKeycloakId(keycloakId);
+                existing = Optional.of(userRepository.save(adopte));
+            }
+        }
+
         if (existing.isEmpty()) {
             return userRepository.save(User.builder()
                     .keycloakId(keycloakId)

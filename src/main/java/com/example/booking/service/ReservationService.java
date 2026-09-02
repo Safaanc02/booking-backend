@@ -90,7 +90,9 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<ReservationResponse> getMine() {
-        User me = currentUser.getOrCreate();
+        // require() lit sans créer : getOrCreate() insérerait le miroir, ce
+        // qu'une transaction en lecture seule refuse.
+        User me = currentUser.require();
         List<Reservation> mes = reservationRepository.findByClientIdOrderByDebutDesc(me.getId());
         if (mes.isEmpty()) {
             return List.of();

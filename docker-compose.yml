@@ -32,6 +32,9 @@ services:
       - "8081:8081"
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
+      # Thème de connexion. En mode start-dev le cache de thèmes est désactivé :
+      # une modification de CSS est visible au simple rechargement de la page.
+      - ./keycloak/themes:/opt/keycloak/themes:ro
     healthcheck:
       # L'image Keycloak ne contient ni curl ni wget : on ouvre une socket
       # via /dev/tcp sur le port de management (KC_HEALTH_ENABLED).

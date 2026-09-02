@@ -52,6 +52,18 @@ node scripts/donnees-demo.mjs
 Tout passe par l'API, jamais par des `INSERT` directs : le jeu de données ne
 peut donc ni contredire les règles métier, ni dériver du schéma.
 
+> ⚠️ **Recréer le conteneur Keycloak efface tous les comptes créés après
+> l'import.** En mode `start-dev`, Keycloak garde ses données en mémoire :
+> seuls `admin`, `pro1` et `client1` — présents dans le fichier de realm —
+> reviennent. Les comptes `pro.*` et `equipe.*` disparaissent, et les salons
+> en base se retrouvent sans propriétaire joignable. Après tout
+> `docker compose up -d keycloak` qui recrée le conteneur, relancer
+> `donnees-demo.mjs` — ou faire une remise à zéro complète.
+>
+> L'application sait en revanche récupérer un changement d'identifiant
+> Keycloak pour un compte qui existe toujours : elle adopte le miroir local
+> au lieu d'échouer.
+
 ### Remise à zéro
 
 ```bash

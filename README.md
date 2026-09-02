@@ -62,14 +62,35 @@ node scripts/donnees-demo.mjs       # dans un autre terminal
 
 ## Comptes de test
 
-Créés automatiquement par l'import du realm Keycloak (`keycloak/booking-realm-realm.json`).
 Mots de passe identiques aux identifiants — **développement local uniquement**.
 
-| Identifiant | Rôle | Peut |
+`admin`, `pro1` et `client1` viennent de l'import du realm
+(`keycloak/booking-realm-realm.json`). Les comptes `pro.*` sont créés par le
+script de démonstration, qui les déclare dans Keycloak et leur attribue le
+rôle `pro`.
+
+| Identifiant | Rôle | Possède |
 |---|---|---|
-| `admin` | admin | Tout |
-| `pro1` | pro | Créer et gérer ses salons |
-| `client1` | client | Réserver |
+| `admin` | admin | Rien — valide les salons, traverse tous les contrôles de propriété |
+| `client1` | client | Rien — réserve, note, annule |
+| `pro1` | pro | Atlas Barber (Casablanca) |
+| `pro.darzine` | pro | Dar Zine (Marrakech) |
+| `pro.nails` | pro | Nails & Co (Casablanca) |
+| `pro.firdaws` | pro | Hammam Al Firdaws (Rabat) |
+| `pro.anfa` | pro | Salon Anfa — en attente de validation |
+
+**Un propriétaire par salon**, volontairement : connecté avec l'un de ces
+comptes on ne voit que son propre salon, et toute tentative sur un autre
+renvoie 403. C'est le cloisonnement le plus important à vérifier — un jeu de
+données où un seul compte possède tout ne l'exerce pas.
+
+### Inscription d'un nouveau professionnel
+
+Il n'y a **aucun parcours d'inscription professionnelle** : un compte créé par
+le formulaire public n'obtient aucun rôle métier et retombe sur `client`, donc
+ne peut pas référencer de salon. Aujourd'hui il faut passer par la console
+Keycloak (Users → Add user → Credentials → Role mapping → `pro`), ou suivre ce
+que fait `donnees-demo.mjs` avec l'API d'administration.
 
 Console Keycloak : http://localhost:8081 (identifiants dans `.env`).
 

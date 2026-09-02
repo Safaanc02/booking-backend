@@ -58,6 +58,77 @@ const appel = async (methode, chemin, corps, token) => {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * Crée un compte professionnel dans Keycloak et lui donne le rôle `pro`.
+ *
+ * Nécessaire parce qu'il n'existe aucun parcours d'inscription
+ * professionnelle : un compte créé par le formulaire public n'obtient aucun
+ * rôle métier et retombe sur CLIENT, donc ne peut pas référencer de salon.
+ *
+ * Chaque salon a ainsi son propre propriétaire. Une version précédente créait
+ * tout avec le seul compte pro1 : Karim Benali se retrouvait à la tête d'un
+ * barbier à Casablanca, d'un salon de coiffure à Marrakech, d'une onglerie et
+ * d'un hammam à Rabat. Le multi-salon existe pour les enseignes, pas pour
+ * produire ça.
+ *
+ * Mot de passe identique à l'identifiant, comme les autres comptes de démo.
+ */
+const jetonAdminKeycloak = async () => {
+  const r = await fetch(`${KC}/realms/master/protocol/openid-connect/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: 'admin-cli',
+      username: process.env.KEYCLOAK_ADMIN ?? 'admin',
+      password: process.env.KEYCLOAK_ADMIN_PASSWORD ?? 'admin',
+      grant_type: 'password',
+    }),
+  })
+  if (!r.ok) {
+    throw new Error(`Console Keycloak : authentification refusée (${r.status}). `
+      + 'Vérifier KEYCLOAK_ADMIN et KEYCLOAK_ADMIN_PASSWORD.')
+  }
+  return (await r.json()).access_token
+}
+
+const kcAdmin = await jetonAdminKeycloak()
+
+const kc = async (methode, chemin, corps) => {
+  const r = await fetch(`${KC}/admin/realms/booking-realm${chemin}`, {
+    method: methode,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kcAdmin}` },
+    ...(corps ? { body: JSON.stringify(corps) } : {}),
+  })
+  if (!r.ok && r.status !== 409) {
+    throw new Error(`${methode} ${chemin} → ${r.status} : ${await r.text()}`)
+  }
+  return r
+}
+
+const roleProKeycloak = await (await fetch(`${KC}/admin/realms/booking-realm/roles/pro`, {
+  headers: { Authorization: `Bearer ${kcAdmin}` },
+})).json()
+
+/** Crée le compte s'il n'existe pas, puis renvoie un jeton applicatif pour lui. */
+const compteProfessionnel = async ({ identifiant, prenom, nom, email }) => {
+  await kc('POST', '/users', {
+    username: identifiant, email, firstName: prenom, lastName: nom,
+    enabled: true, emailVerified: true,
+    credentials: [{ type: 'password', value: identifiant, temporary: false }],
+  })
+
+  const trouves = await (await fetch(
+    `${KC}/admin/realms/booking-realm/users?username=${encodeURIComponent(identifiant)}&exact=true`,
+    { headers: { Authorization: `Bearer ${kcAdmin}` } })).json()
+  const id = trouves[0]?.id
+  if (!id) throw new Error(`compte ${identifiant} introuvable après création`)
+
+  await kc('POST', `/users/${id}/role-mappings/realm`,
+    [{ id: roleProKeycloak.id, name: roleProKeycloak.name }])
+
+  return jeton(identifiant)
+}
+
 const ADMIN = 'admin', PRO = 'pro1', CLIENT = 'client1'
 bleu('→ Authentification')
 const t = {
@@ -78,37 +149,45 @@ const SEMAINE = [1, 2, 3, 4, 5, 6].flatMap((jour) => [
  * `valider` à false laisse le salon EN_ATTENTE, pour pouvoir exercer l'écran
  * d'administration.
  */
-const installer = async ({ fiche, prestations, equipe, valider = true }) => {
-  const salon = await appel('POST', '/api/salons', fiche, t[PRO])
+const installer = async ({ fiche, prestations, equipe, valider = true, proprietaire }) => {
+  // Chaque salon est créé PAR son propriétaire : c'est l'utilisateur
+  // authentifié qui devient owner côté serveur.
+  const tokenPro = proprietaire
+    ? await compteProfessionnel(proprietaire)
+    : t[PRO]
+  const salon = await appel('POST', '/api/salons', fiche, tokenPro)
 
   const parNom = {}
   for (const p of prestations) {
-    parNom[p.nom] = await appel('POST', `/api/prestations/salon/${salon.id}`, p, t[PRO])
+    parNom[p.nom] = await appel('POST', `/api/prestations/salon/${salon.id}`, p, tokenPro)
   }
 
   const employes = []
   for (const membre of equipe) {
     const { fait, ...profil } = membre
-    const e = await appel('POST', `/api/pro/salons/${salon.id}/employes`, profil, t[PRO])
+    const e = await appel('POST', `/api/pro/salons/${salon.id}/employes`, profil, tokenPro)
     await appel('PUT', `/api/pro/employes/${e.id}/prestations`,
-      { prestationIds: fait.map((nom) => parNom[nom].id) }, t[PRO])
+      { prestationIds: fait.map((nom) => parNom[nom].id) }, tokenPro)
     employes.push(e)
   }
 
-  await appel('PUT', `/api/pro/salons/${salon.id}/horaires`, SEMAINE, t[PRO])
+  await appel('PUT', `/api/pro/salons/${salon.id}/horaires`, SEMAINE, tokenPro)
   if (valider) {
     await appel('PATCH', `/api/admin/salons/${salon.id}/statut?statut=ACTIF`, null, t[ADMIN])
   }
 
   const etat = valider ? 'en ligne' : 'EN ATTENTE de validation'
+  const qui = proprietaire ? proprietaire.identifiant : PRO
   vert(`${fiche.nom} — ${fiche.ville} · ${prestations.length} prestations · `
-     + `${employes.map((e) => e.prenom).join(', ')} · ${etat}`)
-  return { salon, prestations: parNom, employes }
+     + `${employes.map((e) => e.prenom).join(', ')} · ${etat} · compte ${qui}`)
+  return { salon, prestations: parNom, employes, token: tokenPro, compte: qui }
 }
 
 bleu('→ Salons, équipes et catalogues')
 
 const darZine = await installer({
+  proprietaire: { identifiant: 'pro.darzine', prenom: 'Leila', nom: 'Amrani',
+                  email: 'leila@darzine.ma' },
   fiche: {
     nom: 'Dar Zine', ville: 'Marrakech', quartier: 'Guéliz',
     adresse: '45 Rue Ibn Batouta', telephone: '0661234567',
@@ -130,6 +209,9 @@ const darZine = await installer({
   ],
 })
 
+// Atlas Barber reste sur le compte pro1 (Karim Benali, barbier à Casablanca) :
+// c'est cohérent, et cela laisse un salon accessible avec le compte de démo
+// le plus connu.
 const atlas = await installer({
   fiche: {
     nom: 'Atlas Barber', ville: 'Casablanca', quartier: 'Maarif',
@@ -151,6 +233,8 @@ const atlas = await installer({
 })
 
 const nails = await installer({
+  proprietaire: { identifiant: 'pro.nails', prenom: 'Salma', nom: 'Berrada',
+                  email: 'salma@nailsandco.ma' },
   fiche: {
     nom: 'Nails & Co', ville: 'Casablanca', quartier: 'Gauthier',
     adresse: '12 Rue Jean Jaurès', telephone: '0677889900',
@@ -167,7 +251,9 @@ const nails = await installer({
   ],
 })
 
-await installer({
+const firdaws = await installer({
+  proprietaire: { identifiant: 'pro.firdaws', prenom: 'Rachid', nom: 'Tazi',
+                  email: 'rachid@alfirdaws.ma' },
   fiche: {
     nom: 'Hammam Al Firdaws', ville: 'Rabat', quartier: 'Agdal',
     adresse: '3 Avenue Fal Ould Oumeir', telephone: '0537778899',
@@ -183,8 +269,10 @@ await installer({
   ],
 })
 
-await installer({
+const anfa = await installer({
   valider: false,
+  proprietaire: { identifiant: 'pro.anfa', prenom: 'Nadia', nom: 'Filali',
+                  email: 'nadia@salonanfa.ma' },
   fiche: {
     nom: 'Salon Anfa', ville: 'Casablanca', quartier: 'Anfa',
     adresse: "60 Boulevard d'Anfa", telephone: '0522334455',
@@ -210,9 +298,9 @@ const passe = async (lieu, prestation, employe, joursAvant, heure, clientNom, cl
     employeId: lieu.employes[employe].id,
     debut: d.toISOString(),
     clientNom, clientTelephone, origine: 'TELEPHONE',
-  }, t[PRO])
+  }, lieu.token)
 
-  await appel('PATCH', `/api/pro/reservations/${r.id}/statut?statut=HONOREE`, null, t[PRO])
+  await appel('PATCH', `/api/pro/reservations/${r.id}/statut?statut=HONOREE`, null, lieu.token)
   return r
 }
 
@@ -255,15 +343,19 @@ bleu('→ Avis')
  * Un avis exige un rendez-vous HONOREE : le salon marque le passage, puis le
  * client note. C'est ce chaînage qui rend les faux avis impossibles.
  */
-const avis = async (reservation, note, commentaire) => {
-  await appel('PATCH', `/api/pro/reservations/${reservation.id}/statut?statut=HONOREE`, null, t[PRO])
+const avis = async (lieu, reservation, note, commentaire) => {
+  // C'est le salon qui atteste du passage, avec SON compte : un autre
+  // professionnel n'a aucun droit sur ce rendez-vous.
+  await appel('PATCH', `/api/pro/reservations/${reservation.id}/statut?statut=HONOREE`,
+    null, lieu.token)
   return appel('POST', '/api/avis', { reservationId: reservation.id, note, commentaire }, t[CLIENT])
 }
 
-const a1 = await avis(r1, 5, 'Sofia a parfaitement compris ce que je voulais. Salon impeccable.')
-await avis(r2, 4, 'Bonne coupe, un peu d\'attente à l\'arrivée.')
+const a1 = await avis(darZine, r1, 5,
+  'Sofia a parfaitement compris ce que je voulais. Salon impeccable.')
+await avis(atlas, r2, 4, 'Bonne coupe, un peu d\'attente à l\'arrivée.')
 await appel('POST', `/api/pro/avis/${a1.id}/reponse`,
-  { reponse: 'Merci beaucoup ! Au plaisir de vous revoir.' }, t[PRO])
+  { reponse: 'Merci beaucoup ! Au plaisir de vous revoir.' }, darZine.token)
 vert('2 avis, dont un avec réponse du salon')
 
 // r3 reste CONFIRMEE : c'est celle qui sert à tester l'annulation.
@@ -286,4 +378,12 @@ console.log('  \x1b[36mInterface\x1b[0m   http://localhost:5173')
 console.log('  \x1b[36mEmails\x1b[0m      http://localhost:8025')
 console.log('  \x1b[36mAPI\x1b[0m         http://localhost:8080/swagger-ui.html')
 console.log()
-console.log('  Comptes : client1 / pro1 / admin — mot de passe identique à l\'identifiant')
+console.log('  \x1b[36mComptes\x1b[0m — mot de passe identique à l\'identifiant')
+console.log('    client1                    réserver, noter, annuler')
+console.log('    admin                      valider les salons')
+for (const lieu of [atlas, darZine, nails, firdaws, anfa]) {
+  console.log(`    ${lieu.compte.padEnd(26)} ${lieu.salon.nom}`)
+}
+console.log()
+console.log('  Chaque salon a son propre propriétaire : connecté avec un compte, on ne')
+console.log('  voit que son salon. C\'est ce cloisonnement qu\'il faut vérifier.')

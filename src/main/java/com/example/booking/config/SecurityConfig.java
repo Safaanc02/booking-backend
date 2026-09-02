@@ -43,6 +43,9 @@ public class SecurityConfig {
                         // c'est l'obligation de créer un compte trop tôt qui fait fuir.
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        // Documentation d'API. À restreindre en production :
+                        // elle décrit toute la surface d'attaque.
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/admin/**").hasRole(Roles.ADMIN)
                         .requestMatchers("/api/pro/**").hasAnyRole(Roles.PRO, Roles.ADMIN)
                         .anyRequest().authenticated()

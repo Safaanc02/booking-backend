@@ -99,6 +99,25 @@ n'existe pas encore. Deux refontes structurantes l'attendent, détaillées dans
 1. La table `Creneau` doit disparaître au profit d'un calcul à la volée.
 2. L'entité `Employe` (praticien) doit être introduite.
 
+## Sécurité — deux points à traiter avant toute mise en ligne
+
+**1. Un mot de passe traîne dans l'historique Git.**
+`commandes.docx` contenait des identifiants en clair. Le fichier n'est plus
+suivi, mais **il reste dans l'historique** : n'importe qui ayant accès au dépôt
+peut le récupérer. Deux actions, dans cet ordre :
+
+```bash
+# a. Changer le mot de passe concerné — c'est le seul geste qui protège vraiment.
+# b. Purger l'historique, puis forcer la poussée (à coordonner avec l'équipe :
+#    tous les clones existants devront être refaits).
+git filter-repo --invert-paths --path commandes.docx
+git push --force --all
+```
+
+**2. La documentation d'API est ouverte.** `/swagger-ui.html` et `/v3/api-docs`
+décrivent toute la surface d'attaque. En production : `OPENAPI_ACTIF=false`, ou
+une restriction au réseau interne.
+
 ## Conventions
 
 - Domaine métier nommé en **français** (salon, prestation, créneau, réservation).
@@ -106,3 +125,17 @@ n'existe pas encore. Deux refontes structurantes l'attendent, détaillées dans
 - Téléphones marocains : `0[5-7]XXXXXXXX` ou `+212[5-7]XXXXXXXX`.
 - Instants stockés en **UTC**, présentés en `Africa/Casablanca`.
   Attention : le Maroc bascule de UTC+1 à UTC+0 pendant le Ramadan, deux fois par an.
+- Le schéma appartient à **Flyway**. `ddl-auto=validate` : une entité qui
+  diverge du schéma fait échouer le démarrage, elle ne le modifie pas.
+- Format d'erreur unique `{ timestamp, status, code, message, details? }`.
+  `code` est stable et destiné au client, `message` peut évoluer.
+
+## Limitation de débit
+
+`/api/public/**` est plafonné par adresse : 120 requêtes en rafale, 240 par
+minute en régime établi. La route des disponibilités est autrement trivialement
+aspirable.
+
+⚠️ Les compteurs sont **en mémoire, donc par instance**. Avec deux instances
+derrière un répartiteur, la limite effective double. Passer à un compteur
+partagé (Redis) avant toute mise à l'échelle horizontale.

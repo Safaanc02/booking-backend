@@ -48,6 +48,14 @@
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
 
+        <!-- Documentation d'API générée depuis le code : une doc écrite à la
+             main dérive du code en quelques semaines -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.9</version>
+        </dependency>
+
         <!-- Emails transactionnels -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

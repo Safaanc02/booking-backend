@@ -21,13 +21,16 @@ public class RedacteurEmail {
             DateTimeFormatter.ofPattern("EEEE d MMMM 'à' HH:mm", FR);
 
     private final TemplateEngine moteur;
+    private final JetonAnnulation jetons;
     private final ZoneId zone;
     private final String urlPublique;
 
     public RedacteurEmail(TemplateEngine moteur,
+                          JetonAnnulation jetons,
                           @Value("${app.fuseau:Africa/Casablanca}") String fuseau,
                           @Value("${app.url-publique}") String urlPublique) {
         this.moteur = moteur;
+        this.jetons = jetons;
         this.zone = ZoneId.of(fuseau);
         this.urlPublique = urlPublique;
     }
@@ -52,12 +55,15 @@ public class RedacteurEmail {
                 %s
 
                 Annulation gratuite jusqu'à %d h avant le rendez-vous.
+                Annuler en un clic : %s
                 Gérer ma réservation : %s
                 """.formatted(
                 nomClient(r), r.getSalon().getNom(), r.getNomPrestationFige(),
                 nomEmploye(r), quand(r), prix(r.getPrixFige()),
                 nullVersVide(r.getSalon().getAdresse()), telephoneLisible(r.getSalon().getTelephone()),
-                r.getSalon().getDelaiAnnulationHeures(), urlPublique + "/compte");
+                r.getSalon().getDelaiAnnulationHeures(),
+                urlPublique + "/annuler?token=" + jetons.creer(r),
+                urlPublique + "/compte");
 
         return message(r.getClient().getEmail(), sujet, ctx, texte);
     }
@@ -102,11 +108,13 @@ public class RedacteurEmail {
                 Avec       : %s
                 Où         : %s
 
-                Un empêchement ? Prévenez le salon au %s, ou annulez depuis votre compte : %s
+                Un empêchement ? Annulez en un clic : %s
+                Ou prévenez le salon au %s.
                 """.formatted(
                 nomClient(r), r.getSalon().getNom(), quand(r),
                 r.getNomPrestationFige(), nomEmploye(r), nullVersVide(r.getSalon().getAdresse()),
-                telephoneLisible(r.getSalon().getTelephone()), urlPublique + "/compte");
+                urlPublique + "/annuler?token=" + jetons.creer(r),
+                telephoneLisible(r.getSalon().getTelephone()));
 
         return message(r.getClient().getEmail(), sujet, ctx, texte);
     }
@@ -124,6 +132,9 @@ public class RedacteurEmail {
         ctx.setVariable("adresse", adresseComplete(r));
         ctx.setVariable("telephoneSalon", telephoneLisible(r.getSalon().getTelephone()));
         ctx.setVariable("lienCompte", urlPublique + "/compte");
+        // Annulation sans connexion : un client qui doit retrouver son mot de
+        // passe pour annuler ne le fait pas, il ne vient pas.
+        ctx.setVariable("lienAnnulation", urlPublique + "/annuler?token=" + jetons.creer(r));
         return ctx;
     }
 

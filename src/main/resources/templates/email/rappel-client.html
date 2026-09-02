@@ -20,15 +20,19 @@
   </table>
 
   <p style="margin:20px 0 0;color:#57534e;line-height:1.6;">
-    Un empêchement ? Prévenez le salon au <span th:text="${telephoneSalon}">06 61 23 45 67</span>,
-    ou annulez depuis votre compte.
+    Un empêchement ? Annulez maintenant, sans avoir à vous connecter — le créneau
+    profitera à quelqu'un d'autre. Ou prévenez le salon au
+    <span th:text="${telephoneSalon}">06 61 23 45 67</span>.
   </p>
 
   <p style="margin:20px 0 0;">
-    <a th:href="${lienCompte}"
+    <a th:href="${lienAnnulation}"
        style="display:inline-block;background:#a83f54;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;">
-      Gérer ma réservation
+      Annuler mon rendez-vous
     </a>
+  </p>
+  <p style="margin:12px 0 0;font-size:13px;">
+    <a th:href="${lienCompte}" style="color:#a8a29e;">Voir mes réservations</a>
   </p>
 </div>
 </body>

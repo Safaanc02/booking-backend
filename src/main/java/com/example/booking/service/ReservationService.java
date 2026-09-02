@@ -13,6 +13,8 @@ import com.example.booking.model.Salon;
 import com.example.booking.model.User;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutReservation;
+import com.example.booking.dto.ApercuAnnulation;
+import com.example.booking.notification.JetonAnnulation;
 import com.example.booking.notification.ReservationCreee;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.AvisRepository;
@@ -47,6 +49,7 @@ public class ReservationService {
     private final AvisRepository avisRepository;
     private final DisponibiliteService disponibilites;
     private final CurrentUserService currentUser;
+    private final JetonAnnulation jetons;
     private final ApplicationEventPublisher evenements;
 
     public ReservationService(ReservationRepository reservationRepository,
@@ -57,6 +60,7 @@ public class ReservationService {
                               AvisRepository avisRepository,
                               DisponibiliteService disponibilites,
                               CurrentUserService currentUser,
+                              JetonAnnulation jetons,
                               ApplicationEventPublisher evenements) {
         this.reservationRepository = reservationRepository;
         this.salonRepository = salonRepository;
@@ -66,6 +70,7 @@ public class ReservationService {
         this.avisRepository = avisRepository;
         this.disponibilites = disponibilites;
         this.currentUser = currentUser;
+        this.jetons = jetons;
         this.evenements = evenements;
     }
 
@@ -177,6 +182,79 @@ public class ReservationService {
         r.setStatut(StatutReservation.ANNULEE_CLIENT);
         r.setAnnuleeLe(Instant.now());
         return ReservationMapper.toResponse(reservationRepository.save(r));
+    }
+
+    /* ---------- Annulation par lien signé ---------- */
+
+    /** Aperçu du rendez-vous visé par un lien, sans rien modifier. */
+    @Transactional(readOnly = true)
+    public ApercuAnnulation apercuParJeton(String jeton) {
+        Reservation r = chargerParJeton(jeton);
+        return new ApercuAnnulation(
+                r.getSalon().getNom(),
+                r.getSalon().getTelephone(),
+                r.getNomPrestationFige(),
+                r.getEmploye() != null ? r.getEmploye().nomComplet() : null,
+                r.getDebut(),
+                r.getPrixFige(),
+                r.getStatut().name(),
+                estAnnulable(r),
+                r.getSalon().getDelaiAnnulationHeures());
+    }
+
+    /**
+     * Annulation sans authentification, sur présentation d'un lien signé.
+     *
+     * Le porteur du lien est réputé être le client : il l'a reçu à son adresse.
+     * C'est un compromis assumé — l'alternative, exiger une connexion, se
+     * traduit par des clients qui ne viennent pas plutôt que par des clients
+     * qui annulent.
+     */
+    public ApercuAnnulation annulerParJeton(String jeton) {
+        Reservation r = chargerParJeton(jeton);
+
+        if (!r.getStatut().bloqueLeCreneau()) {
+            // Idempotent : recliquer sur le lien ne doit pas produire d'erreur.
+            return apercu(r);
+        }
+        if (!estAnnulable(r)) {
+            throw new IllegalStateException(
+                    "L'annulation en ligne n'est plus possible : le salon demande "
+                    + r.getSalon().getDelaiAnnulationHeures() + " h de préavis. "
+                    + "Appelez-le au " + r.getSalon().getTelephone() + ".");
+        }
+
+        r.setStatut(StatutReservation.ANNULEE_CLIENT);
+        r.setAnnuleeLe(Instant.now());
+        return apercu(reservationRepository.save(r));
+    }
+
+    private Reservation chargerParJeton(String jeton) {
+        JetonAnnulation.Contenu contenu = jetons.verifier(jeton);
+        Reservation r = reservationRepository.findById(contenu.reservationId())
+                .orElseThrow(() -> new NoSuchElementException("Réservation introuvable"));
+
+        // Le lien portait un créneau : s'il a changé, le lien ne vaut plus.
+        if (!r.getDebut().equals(contenu.debut())) {
+            throw new IllegalArgumentException(
+                    "Ce lien ne correspond plus à votre rendez-vous, qui a été déplacé depuis");
+        }
+        return r;
+    }
+
+    private boolean estAnnulable(Reservation r) {
+        if (!r.getStatut().bloqueLeCreneau()) return false;
+        Instant limite = r.getDebut().minus(Duration.ofHours(r.getSalon().getDelaiAnnulationHeures()));
+        return Instant.now().isBefore(limite);
+    }
+
+    private ApercuAnnulation apercu(Reservation r) {
+        return new ApercuAnnulation(
+                r.getSalon().getNom(), r.getSalon().getTelephone(),
+                r.getNomPrestationFige(),
+                r.getEmploye() != null ? r.getEmploye().nomComplet() : null,
+                r.getDebut(), r.getPrixFige(), r.getStatut().name(),
+                estAnnulable(r), r.getSalon().getDelaiAnnulationHeures());
     }
 
     public void delete(Long id) {

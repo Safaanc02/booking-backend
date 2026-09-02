@@ -1,5 +1,6 @@
 package com.example.booking.controller;
 
+import com.example.booking.dto.ApercuAnnulation;
 import com.example.booking.dto.AvisResponse;
 import com.example.booking.dto.CreneauDisponible;
 import com.example.booking.dto.DisponibilitesResponse;
@@ -8,6 +9,7 @@ import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.service.DisponibiliteService;
 import com.example.booking.service.AvisService;
+import com.example.booking.service.ReservationService;
 import com.example.booking.service.PublicCatalogService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,11 +39,42 @@ public class PublicController {
     private final DisponibiliteService disponibilites;
 
     private final AvisService avis;
+    private final ReservationService reservations;
 
-    public PublicController(PublicCatalogService catalogue, DisponibiliteService disponibilites, AvisService avis) {
+    public PublicController(PublicCatalogService catalogue,
+                            DisponibiliteService disponibilites,
+                            AvisService avis,
+                            ReservationService reservations) {
         this.catalogue = catalogue;
         this.disponibilites = disponibilites;
         this.avis = avis;
+        this.reservations = reservations;
+    }
+
+    /* ---------- Annulation depuis un email ---------- */
+
+    /** Ce que le porteur du lien voit avant de confirmer. Ne modifie rien. */
+    @GetMapping("/reservations/apercu")
+    public ResponseEntity<ApercuAnnulation> apercuAnnulation(@RequestParam String token) {
+        // Pas de cache : l'état du rendez-vous peut changer entre deux consultations.
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(reservations.apercuParJeton(token));
+    }
+
+    /**
+     * Annulation effective.
+     *
+     * ⚠️ En POST, jamais en GET, et ce n'est pas une question de pureté REST :
+     * les clients de messagerie, antivirus et aperçus de liens préchargent les
+     * URL en GET. Un lien d'annulation en GET verrait des rendez-vous annulés
+     * sans que personne n'ait cliqué.
+     */
+    @PostMapping("/reservations/annuler")
+    public ResponseEntity<ApercuAnnulation> annulerParLien(@RequestParam String token) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(reservations.annulerParJeton(token));
     }
 
     /** Avis publiés d'un salon, du plus récent au plus ancien. */

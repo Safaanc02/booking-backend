@@ -84,8 +84,15 @@ cd booking-frontend && npm run verifier:pro     # installation d'un salon
 cd booking-frontend && npm run verifier:avis    # cycle d'un avis client
 ```
 
-Les deux scripts de navigateur supposent la stack démarrée et au moins un salon
-ACTIF paramétré.
+Les scripts de navigateur supposent la stack démarrée et au moins un salon
+ACTIF paramétré. `verifier:tunnel` a besoin de Mailpit pour la section
+« annulation depuis l'email » ; sans lui, elle s'annonce non exécutée.
+
+> **Si `./mvnw test` semble bloqué**, c'est presque toujours la sonde
+> Testcontainers : elle interroge le socket Docker, et attend longtemps si le
+> démon est présent mais ne répond plus. Vérifier `docker info`, relancer
+> OrbStack au besoin, ou cibler les classes sans Docker :
+> `./mvnw test -Dtest='JetonAnnulationTest,SeauJetonsTest,DisponibiliteServiceTest'`
 
 ## État d'avancement
 

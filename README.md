@@ -161,6 +161,7 @@ curl -s -X POST http://localhost:8081/realms/booking-realm/protocol/openid-conne
 
 ```bash
 cd booking-backend  && ./mvnw test              # moteur de disponibilité
+cd booking-frontend && npm run verifier:accueil # page d'accueil : données réelles, mise en page
 cd booking-frontend && npm run verifier:tunnel  # parcours client, vrai navigateur
 cd booking-frontend && npm run verifier:pro     # installation d'un salon
 cd booking-frontend && npm run verifier:avis    # cycle d'un avis client

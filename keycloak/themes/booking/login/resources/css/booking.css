@@ -456,6 +456,59 @@
 .b-langue-lien:hover { background: var(--gris-100); }
 
 /* ------------------------------------------------------------------ */
+/* Pages d'information : invitation, confirmation                     */
+/* ------------------------------------------------------------------ */
+/* Ces écrans n'ont pas de formulaire — sans style, ils tombaient en texte
+   nu au milieu de la carte, juste après l'écran de connexion soigné. Or
+   c'est la page qu'un gérant voit en ouvrant son invitation. */
+#kc-info-message {
+  font-size: 15px;
+  color: var(--gris-500);
+}
+#kc-info-message .instruction {
+  margin: 0 0 12px;
+  line-height: 1.55;
+}
+.b-etapes {
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+.b-etapes li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  font-weight: 500;
+  color: var(--encre);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-200);
+  border-radius: var(--rayon);
+}
+.b-etapes li + li { margin-top: 8px; }
+/* Une puce dessinée plutôt qu'un caractère : elle reste alignée quelle que
+   soit la police disponible, et suit la marque. */
+.b-etapes li::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-600);
+}
+
+/* Le bouton est un <a> : sans cela il hériterait du soulignement des liens
+   de la carte, et perdrait sa hauteur de frappe. */
+#kc-info-action {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+#kc-info-action:hover { text-decoration: none; }
+
+[dir="rtl"] .b-etapes li { text-align: right; }
+
+/* ------------------------------------------------------------------ */
 /* Arabe : l'interface passe en lecture de droite à gauche            */
 /* ------------------------------------------------------------------ */
 [dir="rtl"] .b-input-group .b-input { padding-right: 13px; padding-left: 44px; }

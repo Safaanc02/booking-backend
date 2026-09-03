@@ -25,7 +25,7 @@
 - **Contrainte produit** : un rôle en **lecture seule sur son propre agenda**, sans accès aux réglages du salon ni aux autres praticiens.
 
 ### Admin plateforme
-Nous. Valide les salons à l'inscription, arbitre les litiges, modère les avis.
+Nous. Référence les salons pour le compte des gérants, valide leur mise en ligne, arbitre les litiges, modère les avis.
 
 - **Contrainte produit** : un salon n'est **pas visible publiquement tant qu'il n'est pas validé**. Le champ `statut` sur `Salon` sert à ça.
 
@@ -48,21 +48,26 @@ Nous. Valide les salons à l'inscription, arbitre les litiges, modère les avis.
 
 **Règle d'or du tunnel** : de l'étape 3 à l'étape 8, il ne doit jamais y avoir plus de **4 écrans**. Chaque écran supplémentaire coûte environ 20 % de conversion.
 
-## Parcours pro — de l'inscription à la première réservation
+## Parcours pro — du démarchage à la première réservation
 
-| # | Étape | Écran | Objectif |
-|---|---|---|---|
-| 1 | Crée son compte | Keycloak (rôle `pro`) | — |
-| 2 | Renseigne son salon | `pro/Onboarding` | Nom, adresse, téléphone, photos |
-| 3 | Ajoute ses prestations | `pro/Prestations` | **Pré-remplir par métier** : « Coupe femme 45 min », « Barbe 20 min »… |
-| 4 | Ajoute son équipe | `pro/Equipe` | Au moins lui-même ; coche qui fait quoi |
-| 5 | Déclare ses horaires | `pro/Horaires` | Par jour, avec pause déjeuner |
-| 6 | Attend la validation admin | — | Statut `EN_ATTENTE` → `ACTIF` |
-| 7 | Reçoit sa première résa | notification | Le moment « aha » |
-| 8 | Consulte son agenda | `pro/Agenda` | Vue jour par défaut sur mobile, semaine sur desktop |
-| 9 | Bloque un créneau | `pro/Agenda` | Pause, rendez-vous perso, congé |
+Un professionnel ne s'inscrit pas. **L'équipe installe son salon pour lui**, puis lui remet les clés. Ce n'est pas une limitation technique : le paramétrage d'un catalogue — trente prestations, leurs durées, qui fait quoi — est l'étape où l'on perd la quasi-totalité des gérants laissés seuls. La faire à leur place est le produit autant que le logiciel.
 
-**Objectif d'onboarding** : de l'étape 1 à 5 en **moins de 20 minutes**. C'est le principal facteur d'abandon côté pro.
+| # | Étape | Qui | Écran / route | Objectif |
+|---|---|---|---|---|
+| 1 | Prise de contact | conseiller | terrain, téléphone | Qualifier l'établissement |
+| 2 | Référencement du salon | conseiller | `admin` → *Référencer* · `POST /api/admin/salons` | Fiche + compte du gérant, en un envoi |
+| 3 | Le gérant choisit son mot de passe | gérant | lien reçu par e-mail | Aucun mot de passe ne circule en clair |
+| 4 | Paramétrage assisté | conseiller **avec** le gérant | `pro/Prestations`, `Equipe`, `Horaires` | **Pré-remplir par métier** : « Coupe femme 45 min », « Barbe 20 min »… |
+| 5 | Mise en ligne | conseiller | `admin` → *À valider* | `EN_ATTENTE` → `ACTIF` |
+| 6 | Reçoit sa première résa | gérant | notification | Le moment « aha » |
+| 7 | Consulte son agenda | gérant | `pro/Agenda` | Vue jour par défaut sur mobile, semaine sur desktop |
+| 8 | Bloque un créneau | gérant | `pro/Agenda` | Pause, rendez-vous perso, congé |
+
+Les étapes 2 et 5 se confondent quand l'installation se fait sur place, avec le gérant : le conseiller cochant « mettre en ligne tout de suite ».
+
+**Ce que le gérant ne fait jamais** : créer un établissement. `POST /api/salons` est réservé à l'administration, et l'espace professionnel ne propose aucun formulaire de création. Un compte tombé sans salon — un membre d'équipe, un rattachement manqué — est orienté, pas invité à recommencer.
+
+**Objectif** : de l'étape 2 à l'étape 5 dans **une seule visite**. C'est ce délai, et non celui d'un formulaire d'inscription, qui décide de l'adoption.
 
 ## Matrice des droits
 
@@ -75,7 +80,7 @@ Nous. Valide les salons à l'inscription, arbitre les litiges, modère les avis.
 | Voir **son** agenda | ❌ | ❌ | ✅ | ✅ | ✅ |
 | Voir l'agenda de **tout le salon** | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Gérer prestations / équipe / horaires | ❌ | ❌ | ❌ | ✅ *(son salon)* | ✅ |
-| Créer un salon | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Créer un salon | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Valider un salon | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Gérer les utilisateurs | ❌ | ❌ | ❌ | ❌ | ✅ |
 

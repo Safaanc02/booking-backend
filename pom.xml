@@ -66,13 +66,6 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
-        <!-- Keycloak -->
-        <dependency>
-            <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-admin-client</artifactId>
-            <version>23.0.7</version>
-        </dependency>
-
         <!-- Flyway : le schéma est décrit par des migrations versionnées,
              ddl-auto ne sait ni supprimer une table ni renommer une colonne -->
         <dependency>

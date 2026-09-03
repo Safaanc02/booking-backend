@@ -1,7 +1,7 @@
 {
   "realm": "booking-realm",
   "enabled": true,
-  "displayName": "Booking Maroc",
+  "displayName": "Booking.ma",
   "sslRequired": "none",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
@@ -69,6 +69,20 @@
       "publicClient": false,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "booking-backend-admin",
+      "name": "API — gestion des comptes professionnels",
+      "description": "Compte de service permettant à l'API de créer les comptes des salons. Distinct du compte admin humain : ses droits sont limités à la gestion des utilisateurs, et sa révocation n'affecte personne d'autre.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "secret-de-developpement-a-remplacer"
     }
   ],
   "users": [
@@ -125,8 +139,31 @@
       "realmRoles": [
         "client"
       ]
+    },
+    {
+      "username": "service-account-booking-backend-admin",
+      "enabled": true,
+      "serviceAccountClientId": "booking-backend-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users"
+        ]
+      }
     }
   ],
   "loginTheme": "booking",
-  "accountTheme": "keycloak.v3"
+  "accountTheme": "keycloak.v3",
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "ne-pas-repondre@booking.ma",
+    "fromDisplayName": "Booking.ma",
+    "replyTo": "",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
+  "actionTokenGeneratedByAdminLifespan": 259200
 }

@@ -164,13 +164,15 @@ cd booking-backend  && ./mvnw test              # moteur de disponibilité
 cd booking-frontend && npm run verifier:tunnel  # parcours client, vrai navigateur
 cd booking-frontend && npm run verifier:pro     # installation d'un salon
 cd booking-frontend && npm run verifier:avis    # cycle d'un avis client
+cd booking-frontend && npm run verifier:referencement  # arrivée d'un salon, de l'admin au gérant
 ```
 
 Les scripts de navigateur supposent la stack démarrée et au moins un salon
 ACTIF paramétré — le jeu de démonstration suffit.
 
 ⚠️ Ils **écrivent** : réservations, avis, et un salon supplémentaire pour
-`verifier:pro`. Relancer `donnees-demo.mjs` après une remise à zéro rend un
+`verifier:pro` comme pour `verifier:referencement` (ce dernier crée aussi un
+compte de gérant, avec une adresse différente à chaque exécution). Relancer `donnees-demo.mjs` après une remise à zéro rend un
 état propre. `verifier:tunnel` a besoin de Mailpit pour la section
 « annulation depuis l'email » ; sans lui, elle s'annonce non exécutée.
 

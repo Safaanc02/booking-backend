@@ -11,10 +11,20 @@
 | **Qui** | Particulier qui cherche un salon | Gérant de salon, praticien indépendant |
 | **Problème** | Réserver hors des heures d'ouverture, comparer prix et dispos | Téléphone qui sonne pendant une coupe, créneaux vides, no-shows |
 | **Promesse** | Réserver en 3 clics, à toute heure | Agenda rempli, moins d'appels, moins de lapins |
-| **Ce qu'on lui demande** | Rien (gratuit) | Abonnement mensuel + commission sur nouveaux clients |
+| **Ce qu'on lui demande** | Rien (gratuit) | Abonnement mensuel par établissement |
 | **Sans l'autre face** | Aucun salon à réserver | Aucun client à recevoir |
 
+### Pas de commission sur les rendez-vous
+
+Un abonnement fixe, et rien sur les réservations. Ce n'est pas une facilité de facturation, c'est la position commerciale : un salon qui verse un pourcentage sur un client qu'il avait déjà finit par comparer la facture au bénéfice, et cherche à sortir de la plateforme. Planity en a fait un argument affiché ; le prendre au sérieux nous prive d'un revenu variable, mais rend la relation défendable devant un gérant qui compte.
+
+Corollaire : le revenu ne dépend que du nombre d'établissements abonnés. La priorité n'est donc pas le volume de rendez-vous, mais la **rétention** — ce qui explique le modèle d'installation décrit ci-dessous.
+
+### Le côté pro d'abord
+
 Le piège classique du two-sided market : on ne peut pas lancer les deux faces en même temps. **On amorce par le côté pro** (démarchage manuel de 10–20 salons sur une seule ville) avant d'ouvrir le côté client.
+
+Et on n'attend pas du professionnel qu'il s'inscrive. **C'est l'équipe qui installe le salon** : compte, fiche, catalogue, équipe, horaires. Le paramétrage d'un catalogue est précisément ce qui fait abandonner un gérant — le lui épargner est la meilleure garantie qu'il reste. Il reçoit ensuite un lien pour choisir son mot de passe, et trouve son salon déjà prêt. Voir *Personas & parcours* pour le détail.
 
 ## Les briques de Planity, décomposées
 

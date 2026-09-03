@@ -1,6 +1,9 @@
 package com.example.booking.controller;
 
+import com.example.booking.comptes.ReferencementService;
 import com.example.booking.dto.AvisResponse;
+import com.example.booking.dto.ReferencementResponse;
+import com.example.booking.dto.ReferencementSalonRequest;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutAvis;
@@ -10,6 +13,8 @@ import com.example.booking.service.SalonService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -29,11 +34,33 @@ public class AdminController {
     private final RappelPlanificateur rappels;
 
     private final AvisService avis;
+    private final ReferencementService referencement;
 
-    public AdminController(SalonService salonService, RappelPlanificateur rappels, AvisService avis) {
+    public AdminController(SalonService salonService,
+                           RappelPlanificateur rappels,
+                           AvisService avis,
+                           ReferencementService referencement) {
         this.salonService = salonService;
         this.rappels = rappels;
         this.avis = avis;
+        this.referencement = referencement;
+    }
+
+    /**
+     * Référence un salon pour le compte d'un gérant.
+     *
+     * C'est le modèle du métier : le salon ne s'inscrit pas seul, l'équipe
+     * l'installe pour lui. Un seul appel crée le compte Keycloak, lui attribue
+     * le rôle professionnel, pose le miroir local, crée le salon à son nom et
+     * l'invite à choisir son mot de passe.
+     *
+     * Avant, il fallait une console Keycloak et cinq écrans par salon — ce qui
+     * faisait de l'administration le goulot d'étranglement de la croissance.
+     */
+    @PostMapping("/salons")
+    public ResponseEntity<ReferencementResponse> referencerSalon(
+            @Valid @RequestBody ReferencementSalonRequest requete) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(referencement.referencer(requete));
     }
 
     /* ---------- Modération des avis ---------- */

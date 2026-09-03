@@ -103,6 +103,7 @@ Toutes ces routes vérifient que l'appelant est propriétaire du salon visé.
 
 | Méthode | Route | Description |
 |---|---|---|
+| `POST` | `/api/admin/salons` | **Référencer un salon** : compte du gérant, rôle, fiche et invitation en un envoi |
 | `GET` | `/api/admin/salons?statut=EN_ATTENTE` | File de validation |
 | `PATCH` | `/api/admin/salons/{id}/statut` | Valider / suspendre |
 | `GET/PUT/DELETE` | `/api/admin/users[/{id}]` | Utilisateurs |

@@ -22,10 +22,16 @@ public class SalonController {
     }
 
     /**
-     * 🔹 Créer un salon (PRO ou ADMIN uniquement)
+     * Crée un salon sans propriétaire désigné : il appartient à l'appelant.
+     *
+     * Réservé à l'administration. Un professionnel ne crée pas son salon
+     * lui-même : c'est l'équipe qui le référence, avec son compte et son
+     * catalogue, via POST /api/admin/salons. Tant que ce verbe était ouvert
+     * au rôle `pro`, un même compte pouvait accumuler des établissements —
+     * ce qui n'a de sens pour personne et brouillait le cloisonnement.
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('PRO','ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SalonResponse> createSalon(@Valid @RequestBody SalonRequest request) {
         SalonResponse created = salonService.createSalon(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);

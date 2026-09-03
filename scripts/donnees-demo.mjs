@@ -161,12 +161,24 @@ const SEMAINE = [1, 2, 3, 4, 5, 6].flatMap((jour) => [
  * d'administration.
  */
 const installer = async ({ fiche, prestations, equipe, valider = true, proprietaire }) => {
-  // Chaque salon est créé PAR son propriétaire : c'est l'utilisateur
-  // authentifié qui devient owner côté serveur.
-  const tokenPro = proprietaire
-    ? await compteProfessionnel(proprietaire)
-    : t[PRO]
-  const salon = await appel('POST', '/api/salons', fiche, tokenPro)
+  // Le compte est créé ici avec un mot de passe connu — les suites de
+  // vérification se connectent en tant que ce professionnel. Le référencement
+  // le retrouvera par son adresse au lieu d'en créer un second.
+  const gerant = proprietaire ?? { identifiant: PRO, email: 'pro1@booking.ma',
+                                   prenom: 'Karim', nom: 'Benali' }
+  const tokenPro = proprietaire ? await compteProfessionnel(proprietaire) : t[PRO]
+
+  // Le salon passe par le référencement, comme en production : c'est
+  // l'administration qui l'installe pour le compte du gérant. Le script
+  // n'a plus de chemin de création qui lui soit propre.
+  const { salon } = await appel('POST', '/api/admin/salons', {
+    salon: fiche,
+    proprietaire: {
+      prenom: gerant.prenom, nom: gerant.nom, email: gerant.email,
+      telephone: fiche.telephone,
+    },
+    validerImmediatement: valider,
+  }, t[ADMIN])
 
   const parNom = {}
   for (const p of prestations) {
@@ -189,12 +201,9 @@ const installer = async ({ fiche, prestations, equipe, valider = true, proprieta
   }
 
   await appel('PUT', `/api/pro/salons/${salon.id}/horaires`, SEMAINE, tokenPro)
-  if (valider) {
-    await appel('PATCH', `/api/admin/salons/${salon.id}/statut?statut=ACTIF`, null, t[ADMIN])
-  }
 
   const etat = valider ? 'en ligne' : 'EN ATTENTE de validation'
-  const qui = proprietaire ? proprietaire.identifiant : PRO
+  const qui = gerant.identifiant
   const equipeDecrite = employes
     .map((e) => e.role === 'GESTIONNAIRE' ? `${e.prenom} (gestionnaire)` : e.prenom)
     .join(', ')

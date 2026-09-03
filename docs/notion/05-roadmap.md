@@ -9,7 +9,7 @@ Hypothèse : **1 développeur à plein temps, ~20 points par semaine**. À deux,
 | **J0 — Assainir** | 1 sem. | L'app démarre, les droits fonctionnent | Une démo qui ne plante pas |
 | **J1 — Le moteur** | 3 sem. | Calcul de disponibilité fiable | `GET /disponibilites` + sa suite de tests |
 | **J2 — Le tunnel** | 3 sem. | Un client réserve de bout en bout | **Première réservation réelle** |
-| **J3 — Le pro** | 3 sem. | Un salon s'inscrit et gère son agenda seul | Onboarding en autonomie |
+| **J3 — Le pro** | 3 sem. | L'équipe installe un salon, le gérant tient son agenda | Référencement + back-office |
 | **J4 — Le pilote** | 2 sem. | 5 salons réels, vraies réservations | Retours terrain |
 | **J5 — Rétention** | 3 sem. | Notifications et avis | Baisse du no-show mesurée |
 

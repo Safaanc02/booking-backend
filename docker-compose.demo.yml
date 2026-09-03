@@ -1,0 +1,47 @@
+# Complément de démonstration, à superposer au compose de la pile partagée.
+#
+#   docker compose -f docker-compose.partage.yml -f docker-compose.demo.yml up -d
+#
+# Ajoute ce qui sert à faire essayer l'application, et qui n'a rien à faire en
+# production : un serveur de messagerie qui capture les envois, et la route
+# qui permet de les lire.
+#
+# Sans ce fichier, la pile de base n'a pas de boîte aux lettres et exige un
+# vrai serveur d'envoi — c'est-à-dire qu'elle échoue du bon côté si l'on
+# oublie de le configurer.
+#
+# scripts/partager.sh le superpose de lui-même, sauf avec --production.
+
+name: booking-partage
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      TZ: Africa/Casablanca
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      # Sert l'interface sous /courrier, pour tenir sur la même adresse.
+      MP_WEBROOT: courrier
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+
+  api:
+    environment:
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_AUTH: "false"
+      MAIL_TLS: "false"
+    depends_on:
+      mailpit:
+        condition: service_started
+
+  web:
+    # Le fragment ajoute la route /courrier. Absent, la route n'existe pas.
+    volumes:
+      - ./docker/courrier.caddy:/etc/caddy/optionnel-courrier.caddy:ro
+    depends_on:
+      - mailpit

@@ -1,0 +1,11 @@
+# Boîte aux lettres de test, exposée sous /courrier.
+#
+# Monté uniquement par docker-compose.demo.yml. Mailpit capture les envois
+# sans jamais les livrer : c'est ce qui permet de suivre une invitation de
+# gérant ou un lien d'annulation de bout en bout, sans configurer le moindre
+# serveur d'envoi.
+#
+# ⚠️ Les liens d'invitation y sont lisibles en clair. Jamais en production.
+handle /courrier* {
+	reverse_proxy mailpit:8025
+}

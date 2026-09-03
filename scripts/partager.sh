@@ -6,6 +6,7 @@
 #   ./scripts/partager.sh              # essai local, sur le port 8090
 #   ./scripts/partager.sh https://…    # adresse que vous fournissez
 #   ./scripts/partager.sh --arreter    # tout arrêter
+#   ./scripts/partager.sh --production  # sans la boîte aux lettres de test
 #
 # Construit les images, démarre la pile, attend qu'elle réponde, peuple le jeu
 # de démonstration, puis affiche l'adresse à transmettre et les comptes.
@@ -23,7 +24,14 @@ jaune() { printf '  \033[33m!\033[0m %s\n' "$1"; }
 rouge() { printf '  \033[31m✗\033[0m %s\n' "$1" >&2; }
 
 FICHIER=partage.env
+# La démonstration est superposée par défaut : ce script sert à faire essayer
+# l'application, et sans boîte aux lettres lisible on ne peut pas suivre une
+# invitation de gérant. --production s'en passe, et exige alors un vrai
+# serveur d'envoi dans partage.env.
+DEMO=oui
+for a in "$@"; do [ "$a" = --production ] && DEMO=non; done
 COMPOSE="docker compose -f docker-compose.partage.yml"
+[ "$DEMO" = oui ] && COMPOSE="$COMPOSE -f docker-compose.demo.yml"
 PID_TUNNEL=.tunnel.pid
 LOG_TUNNEL=.tunnel.log
 
@@ -42,6 +50,7 @@ fi
 
 TUNNEL=non
 if [ "${1:-}" = "--tunnel" ]; then TUNNEL=oui; shift; fi
+[ "${1:-}" = "--production" ] && shift
 URL_DEMANDEE="${1:-}"
 
 # --------------------------------------------------------------------
@@ -257,7 +266,7 @@ fi
 printf '\n'
 bleu '── À transmettre ──'
 printf '  Application   %s\n' "$URL_PUBLIQUE"
-printf '  Boîte mail    %s/courrier\n' "$URL_PUBLIQUE"
+[ "$DEMO" = oui ] && printf '  Boîte mail    %s/courrier\n' "$URL_PUBLIQUE"
 if [ "$URL_PUBLIQUE" != "$LOCALE" ]; then
   # L'adresse locale ne sert qu'à vérifier que la pile répond.
   #

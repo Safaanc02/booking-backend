@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # mvp figure dans la liste : le développement s'y fait, et la CI ne
+    # s'exécutait donc jamais sur les poussées — seulement sur les pull
+    # requests, c'est-à-dire jamais dans les faits.
+    branches: [main, mvp]
   pull_request:
 
 # Une nouvelle poussée sur la même branche annule l'exécution en cours :

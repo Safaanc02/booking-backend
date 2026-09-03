@@ -262,7 +262,61 @@ en mémoire : chaque redémarrage effaçait les comptes créés depuis l'import 
 realm. Acceptable seul devant son écran, intenable dès que quelqu'un d'autre
 essaie l'application.
 
-### ⚠️ Ce n'est pas une mise en production
+### Passer en production
+
+```bash
+node scripts/durcir-production.mjs                                  # constat
+node scripts/durcir-production.mjs --appliquer --admin vous@exemple.ma
+```
+
+Le script fait ce qui est mécanique, contrôle ce qui ne l'est pas, et refuse ce
+qui vous enfermerait dehors :
+
+| Étape | Ce qu'il fait |
+|---|---|
+| Secret du client de service | Le fait tourner — celui du dépôt est public, donc n'en est pas un |
+| Administrateur réel | Le crée s'il n'en existe aucun, et lui envoie un lien pour choisir son mot de passe |
+| Comptes de démonstration | Les supprime — **sauf** s'il ne reste aucun administrateur réel pour prendre la suite |
+| Documentation d'API | Contrôle le réglage, pas la réponse HTTP : à travers le proxy elle répond 401 même activée |
+| Boîte de test | Reconnue à son API JSON : sans la route, `/courrier` retombe sur le site avec un 200 tout à fait normal |
+| Sauvegardes | Signale leur absence, ou leur âge |
+
+Rejouable sans dommage : chaque étape constate avant d'agir.
+
+La pile de base n'embarque **ni boîte aux lettres de test ni route `/courrier`** :
+elles viennent de `docker-compose.demo.yml`, superposé par `partager.sh` sauf
+avec `--production`. Une route qu'on peut oublier de fermer finit par rester
+ouverte ; celle-ci demande un geste pour exister.
+
+### Sauvegardes
+
+```bash
+./scripts/sauvegarder.sh                          # vers ./sauvegardes
+DESTINATION_DISTANTE=b2:booking ./scripts/sauvegarder.sh
+./scripts/restaurer.sh ./sauvegardes/2026-09-03_21h12
+```
+
+**Deux bases, et il faut les deux** : `beauty_booking` pour les rendez-vous,
+`keycloak` pour les comptes. Perdre la première fait perdre l'activité ; perdre
+la seconde prive tous les gérants d'accès, sans possibilité de les recréer à
+l'identique.
+
+Une sauvegarde jamais restaurée n'est pas une sauvegarde : `restaurer.sh` existe
+pour être essayé, pas seulement pour le jour où tout brûle. Il vérifie les
+sommes de contrôle **avant** de détruire quoi que ce soit — découvrir qu'une
+archive est tronquée après avoir effacé la base est le pire moment possible.
+
+Le secret du client de service vit dans la base de Keycloak : une restauration
+le ramène à sa valeur d'alors, et il faut le réaligner
+(`durcir-production.mjs --appliquer`). Le script de restauration le rappelle.
+
+Pour automatiser :
+
+```
+0 3 * * *  cd /chemin/booking-backend && ./scripts/sauvegarder.sh >> sauvegardes/journal.log 2>&1
+```
+
+### ⚠️ Ce n'est pas une mise en production tant que le durcissement n'est pas passé
 
 Les comptes de démonstration ont pour mot de passe leur identifiant, et la
 boîte aux lettres de test est lisible par quiconque connaît l'adresse — donc

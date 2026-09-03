@@ -1,0 +1,169 @@
+{
+  "realm": "booking-realm",
+  "enabled": true,
+  "displayName": "Booking.ma",
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "fr",
+    "ar",
+    "en"
+  ],
+  "defaultLocale": "fr",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrateur de la plateforme"
+      },
+      {
+        "name": "pro",
+        "description": "Professionnel : gère un ou plusieurs salons"
+      },
+      {
+        "name": "client",
+        "description": "Client : réserve des prestations"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "booking-app",
+      "name": "Frontend web (React)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "/*",
+        "http://localhost:5173/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "/*##http://localhost:5173/*"
+      },
+      "fullScopeAllowed": true
+    },
+    {
+      "clientId": "booking-backend",
+      "name": "API Spring Boot",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "bearerOnly": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "booking-backend-admin",
+      "name": "API — gestion des comptes professionnels",
+      "description": "Compte de service permettant à l'API de créer les comptes des salons. Distinct du compte admin humain : ses droits sont limités à la gestion des utilisateurs, et sa révocation n'affecte personne d'autre.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "secret-de-developpement-a-remplacer"
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@booking.ma",
+      "firstName": "Super",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "pro1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "pro1@booking.ma",
+      "firstName": "Karim",
+      "lastName": "Benali",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "pro1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "pro"
+      ]
+    },
+    {
+      "username": "client1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "client1@booking.ma",
+      "firstName": "Salma",
+      "lastName": "Idrissi",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "client1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "client"
+      ]
+    },
+    {
+      "username": "service-account-booking-backend-admin",
+      "enabled": true,
+      "serviceAccountClientId": "booking-backend-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users"
+        ]
+      }
+    }
+  ],
+  "loginTheme": "booking",
+  "accountTheme": "keycloak.v3",
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "ne-pas-repondre@booking.ma",
+    "fromDisplayName": "Booking.ma",
+    "replyTo": "",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
+  "actionTokenGeneratedByAdminLifespan": 259200
+}

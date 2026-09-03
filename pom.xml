@@ -66,6 +66,16 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
+        <!-- Point de santé.
+             Sans lui, /actuator/health répondait 404 alors que SecurityConfig
+             l'autorisait déjà : Docker ne relançait le conteneur que si le
+             processus mourait, et une API bloquée restait « up » sans que
+             personne le sache. Seul le point de santé est exposé. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Flyway : le schéma est décrit par des migrations versionnées,
              ddl-auto ne sait ni supprimer une table ni renommer une colonne -->
         <dependency>

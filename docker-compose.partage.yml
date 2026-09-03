@@ -24,6 +24,18 @@
 #
 #   ./scripts/partager.sh https://mon-adresse-publique
 
+#
+# ---- Dimensionnement ----
+#
+# Chaque service est borné en mémoire. Sans limite, la JVM se sert de 75 % de
+# la machine entière : mesurée à 1,07 Gio pour l'API sur un poste de 4 Gio,
+# alors que 576 Mio de tas lui suffisent. Sur un serveur à 4 €, cette
+# gourmandise se paie en évictions.
+#
+# Bornée ainsi, la pile tient dans ~1,9 Gio : une machine de 2 Gio passe
+# juste, 4 Gio est confortable. MaxRAMPercentage devient alors un pourcentage
+# de la limite du conteneur, ce qui est le comportement voulu.
+#
 name: booking-partage
 
 services:
@@ -44,6 +56,10 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3
@@ -92,6 +108,10 @@ services:
       retries: 30
       start_period: 45s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
   api:
     build: .
@@ -127,6 +147,10 @@ services:
       keycloak:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
   mailpit:
     image: axllent/mailpit:latest
@@ -137,6 +161,10 @@ services:
       # Sert l'interface sous /courrier, pour tenir sur la même adresse.
       MP_WEBROOT: courrier
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 96M
 
   web:
     build: ../booking-frontend
@@ -147,6 +175,10 @@ services:
       - keycloak
       - mailpit
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 96M
 
 volumes:
   donnees_postgres:

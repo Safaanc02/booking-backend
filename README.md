@@ -222,11 +222,31 @@ serveur (ci-dessous), ou un tunnel Cloudflare *nommé* sur un domaine que vous
 possédez — gratuit, sans serveur, sous-domaine stable du type
 `essai.votre-domaine.ma`, et résolu partout puisque c'est votre propre DNS.
 
-**Un petit serveur.** Cinq à quinze euros par mois, adresse stable, joignable
-quand votre machine est éteinte. Clonez les deux dépôts, faites pointer un
-sous-domaine vers le serveur, et lancez la même commande. C'est aussi le
-chemin vers la production : il ne restera qu'à confier le TLS à Caddy, qui sait
-le faire seul dès qu'un nom de domaine lui est donné.
+**Un petit serveur.** Adresse stable, joignable quand votre machine est
+éteinte. Clonez les deux dépôts, faites pointer un sous-domaine vers le
+serveur, et lancez la même commande. C'est aussi le chemin vers la production :
+il ne restera qu'à confier le TLS à Caddy — remplacer `:80 {` par
+`votre-domaine.ma {` dans le Caddyfile et retirer `auto_https off` suffit, il
+obtient et renouvelle le certificat seul.
+
+**Dimensionnement mesuré**, pile bornée et sous la charge des six suites :
+
+| Service | Consommation | Plafond |
+|---|---|---|
+| API (JVM) | 442 Mio | 768 Mio |
+| Keycloak (JVM) | 506 Mio | 768 Mio |
+| PostgreSQL | 55 Mio | 384 Mio |
+| Caddy + Mailpit | 46 Mio | 192 Mio |
+| **Total** | **~1,05 Gio** | 2,1 Gio |
+
+Sans les limites, la JVM de l'API prenait à elle seule **1,07 Gio** — 75 % de la
+machine, faute de plafond. Une machine de 2 Gio suffit, 4 Gio est confortable.
+
+⚠️ **Une pile est configurée pour une seule adresse.** Keycloak émet des URL
+absolues vers `URL_PUBLIQUE` — c'est une protection contre l'injection d'en-tête
+`Host`, pas un réglage. Naviguer par une autre adresse laisse le site sur
+« Chargement… », la vérification de session ne revenant jamais. L'adresse locale
+sert donc à vérifier que la pile répond, pas à s'en servir.
 
 ### Ce que la pile fait différemment du développement
 

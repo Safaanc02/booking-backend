@@ -259,7 +259,14 @@ bleu '── À transmettre ──'
 printf '  Application   %s\n' "$URL_PUBLIQUE"
 printf '  Boîte mail    %s/courrier\n' "$URL_PUBLIQUE"
 if [ "$URL_PUBLIQUE" != "$LOCALE" ]; then
-  printf '  Depuis ce Mac %s  (l’adresse publique passe par l’extérieur)\n' "$LOCALE"
+  # L'adresse locale ne sert qu'à vérifier que la pile répond.
+  #
+  # Elle ne permet pas de se servir de l'application : Keycloak émet des URL
+  # absolues vers l'adresse publique — c'est une protection contre
+  # l'injection d'en-tête Host, pas un réglage — et la vérification de
+  # session ne revient jamais. Le site reste sur « Chargement… ». Une pile
+  # est configurée pour une seule adresse à la fois.
+  printf '  Vérification  %s  (répond, mais ne permet pas de se connecter)\n' "$LOCALE"
 fi
 printf '\n'
 bleu '── Comptes de démonstration (mot de passe = identifiant) ──'

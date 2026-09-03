@@ -21,6 +21,10 @@
   --brand-500: #c2566a;
   --brand-600: #a83f54;
   --brand-700: #8b3244;
+  /* Ajoutées pour le panneau de l'écran scindé : le fond plein a besoin
+     d'être plus sombre que la 700, et la marque plus claire que la 200. */
+  --brand-300: #eeaab5;
+  --brand-800: #6f2837;
 
   --ivoire:   #faf9f7;
   --encre:    #1c1917;
@@ -47,7 +51,7 @@
   min-height: 100vh;
   /* Fond explicite : sans cela la page emprunte celui du navigateur, qui
      diffère en thème sombre et casse la continuité avec le site. */
-  background: linear-gradient(180deg, var(--brand-50) 0%, var(--ivoire) 42%);
+  background: var(--ivoire);
   color: var(--encre);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                Helvetica, Arial, sans-serif;
@@ -57,27 +61,115 @@
 }
 
 .b-login {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   min-height: 100vh;
-  padding: 40px 16px;
+  display: grid;
 }
 
 /* ------------------------------------------------------------------ */
-/* Marque                                                             */
+/* Écran scindé                                                       */
+/*                                                                    */
+/* Le gabarit de `base` ne fournit que deux blocs : l'en-tête de marque */
+/* et la carte du formulaire. Une grille suffit à en faire deux         */
+/* colonnes — le panneau décoratif à gauche, le formulaire à droite —   */
+/* sans reprendre template.ftl, dont il faudrait alors suivre chaque    */
+/* montée de version de Keycloak.                                      */
+/*                                                                    */
+/* Avant cela, la page était une carte blanche centrée sur un fond      */
+/* presque blanc : correcte, et impossible à distinguer de n'importe    */
+/* quel écran de connexion au monde. Or c'est le premier écran que voit */
+/* un gérant à qui l'on vient de confier ses accès.                    */
 /* ------------------------------------------------------------------ */
-.b-header { margin-bottom: 22px; }
+.b-header {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 26px 20px;
+  background-color: var(--brand-800);
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2756%27%20height%3D%2756%27%20viewBox%3D%270%200%2056%2056%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27rgba%28255%2C255%2C255%2C0.20%29%27%20stroke-width%3D%271%27%3E%3Crect%20x%3D%27-11.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%27-11.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%200%200%29%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%2056%200%29%27%2F%3E%3Crect%20x%3D%27-11.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%27-11.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%200%2056%29%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%2056%2056%29%27%2F%3E%3Crect%20x%3D%2716.5%27%20y%3D%2716.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.5%27%20y%3D%2716.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%2028%2028%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  background-size: 56px 56px;
+}
+
+/* L'arche, en trait, débordant du bas du panneau.
+   Dessinée en bordures et rayons : trois déclarations, aucun fichier. */
+.b-header::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: -1px;
+  width: 132px;
+  height: 190px;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-bottom: 0;
+  border-radius: 66px 66px 0 0;
+  pointer-events: none;
+}
 
 .b-brand {
+  position: relative;
+  z-index: 1;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  text-align: center;
 }
-.b-brand-texte { color: var(--encre); }
-.b-brand-point  { color: var(--brand-600); }
+.b-brand-texte { color: #fff; }
+.b-brand-point  { color: var(--brand-300); }
+
+/*
+ * Accroche du panneau.
+ *
+ * Portée par un pseudo-élément et non par le gabarit : `base` ne prévoit
+ * aucun emplacement pour du texte libre, et reprendre template.ftl pour
+ * trois lignes obligerait à suivre chaque montée de version de Keycloak.
+ *
+ * Le texte suit la langue de la page — le gabarit pose lang="fr|ar|en" sur
+ * <html> quand l'internationalisation est active — si bien qu'il reste
+ * traduit, ce qu'une valeur unique en dur n'aurait pas permis.
+ *
+ * Décoratif : les lecteurs d'écran ignorent le contenu généré, et rien
+ * d'essentiel n'y figure.
+ */
+.b-brand::after {
+  content: "Le rendez-vous beauté, sans un seul appel.";
+  display: block;
+  margin-top: 10px;
+  max-width: 15ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.78);
+}
+.b-html:lang(en) .b-brand::after {
+  content: "Beauty appointments, without a single phone call.";
+}
+.b-html:lang(ar) .b-brand::after {
+  content: "مواعيد التجميل، دون أي مكالمة هاتفية.";
+}
+
+@media (min-width: 900px) {
+  .b-login {
+    /* Le panneau prend un peu plus que la moitié : la colonne du
+       formulaire n'a besoin que de sa largeur de lecture. */
+    grid-template-columns: 1.1fr minmax(440px, 0.9fr);
+  }
+  .b-header {
+    padding: 56px 48px;
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2756%27%20height%3D%2756%27%20viewBox%3D%270%200%2056%2056%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27rgba%28255%2C255%2C255%2C0.20%29%27%20stroke-width%3D%271%27%3E%3Crect%20x%3D%27-11.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%27-11.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%200%200%29%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%27-11.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%2056%200%29%27%2F%3E%3Crect%20x%3D%27-11.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%27-11.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%200%2056%29%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2744.5%27%20y%3D%2744.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%2056%2056%29%27%2F%3E%3Crect%20x%3D%2716.5%27%20y%3D%2716.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.5%27%20y%3D%2716.5%27%20width%3D%2723%27%20height%3D%2723%27%20rx%3D%271%27%20transform%3D%27rotate%2845%2028%2028%29%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  }
+  .b-brand { font-size: 30px; }
+  .b-brand::after { margin-top: 16px; max-width: 18ch; font-size: 30px; }
+  /* Deux arches, décalées : une seule paraissait perdue dans le panneau,
+     et la répétition est justement ce qui fait une colonnade. */
+  .b-header::after {
+    right: 56px;
+    bottom: -1px;
+    width: 200px;
+    height: 300px;
+    border-radius: 100px 100px 0 0;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Carte                                                              */
@@ -92,6 +184,26 @@
   /* Ombre très douce : la carte doit se détacher du fond sans flotter. */
   box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04),
               0 8px 24px -12px rgba(28, 25, 23, 0.10);
+}
+
+/*
+ * Sur écran scindé, la carte n'a plus à se détacher.
+ *
+ * Placé après la définition de .b-card : à spécificité égale, c'est l'ordre
+ * du fichier qui tranche, et la règle de base annulait celle-ci quand elle
+ * était écrite plus haut.
+ */
+@media (min-width: 900px) {
+  .b-card {
+    align-self: center;
+    justify-self: center;
+    margin: 40px 24px;
+    max-width: 400px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
 }
 
 #kc-page-title {
@@ -428,6 +540,23 @@
   border-color: var(--gris-200);
 }
 #kc-current-locale-link:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 1px; }
+
+/*
+ * Sous 900 px, le sélecteur se retrouve au-dessus du panneau bordeaux.
+ *
+ * Il est positionné en absolu par rapport à la page, si bien qu'en écran
+ * étroit — où le panneau devient un bandeau supérieur — son gris sombre se
+ * posait sur le bordeaux : illisible. La règle ne s'applique qu'en dessous
+ * du point de bascule, au-delà duquel il surplombe la colonne ivoire.
+ */
+@media (max-width: 899px) {
+  #kc-current-locale-link { color: rgba(255, 255, 255, 0.85); }
+  #kc-current-locale-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
 
 .b-langue-liste {
   position: absolute;

@@ -4,7 +4,7 @@
   "displayName": "Booking.ma",
   "sslRequired": "none",
   "registrationAllowed": true,
-  "registrationEmailAsUsername": false,
+  "registrationEmailAsUsername": true,
   "resetPasswordAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,

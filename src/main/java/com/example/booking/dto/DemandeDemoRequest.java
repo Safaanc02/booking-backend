@@ -5,6 +5,7 @@ import com.example.booking.model.enums.TypeEtablissement;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -27,7 +28,25 @@ public class DemandeDemoRequest {
     @Size(max = 150)
     private String nomEtablissement;
 
-    @NotNull(message = "Le type d'établissement est obligatoire")
+    /**
+     * Métiers exercés, au moins un.
+     *
+     * Le formulaire n'en acceptait qu'un, par boutons radio. Un institut qui
+     * fait la coiffure, l'onglerie et l'esthétique devait en choisir un, et le
+     * conseiller ne savait donc pas ce qu'il allait trouver sur place.
+     *
+     * typeEtablissement reste accepté seul, pour ne pas casser un appel
+     * existant : le service retient alors ce seul métier.
+     */
+    private java.util.Set<TypeEtablissement> metiers;
+
+    /**
+     * Métier principal.
+     *
+     * Facultatif dans la requête : à défaut, le service prend le premier des
+     * métiers déclarés. Le renseigner permet de désigner explicitement lequel
+     * compte le plus.
+     */
     private TypeEtablissement typeEtablissement;
 
     @Size(max = 150)
@@ -81,4 +100,22 @@ public class DemandeDemoRequest {
 
     @Size(max = 1000)
     private String message;
+
+    /**
+     * Au moins un métier doit être déterminable.
+     *
+     * La contrainte porte sur les deux champs ensemble et non sur `metiers`
+     * seul : marquer celui-ci obligatoire aurait rejeté un appel ne
+     * renseignant que `typeEtablissement`, alors que c'est la forme
+     * qu'utilisaient les intégrations d'avant — et le formulaire lui-même,
+     * jusqu'à ce qu'il accepte plusieurs métiers.
+     *
+     * Une méthode @AssertTrue plutôt qu'un test dans le service : l'erreur
+     * revient alors dans le même format que les autres, avec son message,
+     * au lieu d'un 500 ou d'un texte à part.
+     */
+    @AssertTrue(message = "Indiquez au moins un métier")
+    public boolean isMetierRenseigne() {
+        return typeEtablissement != null || (metiers != null && !metiers.isEmpty());
+    }
 }

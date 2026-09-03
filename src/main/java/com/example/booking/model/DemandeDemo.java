@@ -13,6 +13,8 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /** Une demande de démonstration déposée par un professionnel. Voir la migration V9. */
 @Entity
@@ -31,9 +33,35 @@ public class DemandeDemo {
     @Column(name = "nom_etablissement", nullable = false, length = 150)
     private String nomEtablissement;
 
+    /** Métier principal : le premier déclaré par le prospect. */
     @Enumerated(EnumType.STRING)
     @Column(name = "type_etablissement", nullable = false, length = 30)
     private TypeEtablissement typeEtablissement;
+
+    /**
+     * Tous les métiers déclarés, principal compris.
+     *
+     * Le formulaire n'en acceptait qu'un. Un institut qui fait la coiffure,
+     * l'onglerie et l'esthétique devait en choisir un, et le conseiller ne
+     * savait donc pas ce qu'il allait trouver sur place — ni le formulaire de
+     * référencement quoi préremplir.
+     *
+     * EAGER : lu à chaque affichage de la file commerciale, et jamais seul.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "demande_demo_metier",
+            joinColumns = @JoinColumn(name = "demande_id"))
+    @Column(name = "metier", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Set<TypeEtablissement> metiers = new LinkedHashSet<>();
+
+    /** Le métier principal fait toujours partie des métiers déclarés. */
+    public void normaliserMetiers() {
+        if (metiers == null) metiers = new LinkedHashSet<>();
+        if (typeEtablissement != null) metiers.add(typeEtablissement);
+    }
 
     @Column(length = 150)
     private String specialite;

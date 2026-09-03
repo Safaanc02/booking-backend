@@ -74,9 +74,15 @@ Trois écrans plutôt qu'un bloc de quatorze champs. L'ordre n'est pas cosmétiq
 
 | Écran | Champs | Pourquoi là |
 |---|---|---|
-| L'établissement | métier, nom, ville, quartier, spécialité | Facile à répondre, engage la suite |
+| L'établissement | **métiers** (plusieurs), nom, ville, quartier, spécialité | Facile à répondre, engage la suite |
 | L'activité | ancienneté, taille de l'équipe, local en propriété, outil actuel | Décide de l'ordre des visites |
 | Le contact | prénom, nom, téléphone, e-mail, **ICE**, message | Réclamé une fois le reste investi |
+
+Les métiers se cochent, ils ne se choisissent pas. Des boutons radio n'en
+acceptaient qu'un : un institut qui fait la coiffure, l'onglerie et
+l'esthétique devait en désigner un seul, et le conseiller ne savait donc pas
+ce qu'il allait trouver sur place — ni le formulaire de référencement quoi
+préremplir. Le premier coché fait office de métier principal.
 
 L'**ICE** (Identifiant Commun de l'Entreprise, quinze chiffres) est facultatif et ferme la marche : c'est l'équivalent marocain du SIRET, il ne sert qu'au contrat, et personne ne le connaît de mémoire. Le demander tôt transforme une prise de contact en formalité administrative.
 

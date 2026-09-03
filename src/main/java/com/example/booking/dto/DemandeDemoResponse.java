@@ -11,6 +11,7 @@ public record DemandeDemoResponse(
         Long id,
         String nomEtablissement,
         TypeEtablissement typeEtablissement,
+        java.util.List<TypeEtablissement> metiers,
         String specialite,
         String ville,
         String quartier,

@@ -6,6 +6,7 @@ import com.example.booking.model.DemandeDemo;
 import com.example.booking.model.Salon;
 import com.example.booking.model.User;
 import com.example.booking.model.enums.StatutDemandeDemo;
+import com.example.booking.model.enums.TypeEtablissement;
 import com.example.booking.repository.DemandeDemoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.Optional;
 
 /**
@@ -60,9 +63,24 @@ public class DemandeDemoService {
             return null;
         }
 
+        /*
+         * Le métier principal, à défaut d'être désigné, est le premier déclaré.
+         *
+         * L'ordre des cases cochées est celui du formulaire, donc celui dans
+         * lequel le prospect a pensé son activité : le premier est un choix
+         * raisonnable, et le conseiller peut toujours le corriger.
+         */
+        Set<TypeEtablissement> metiers = r.getMetiers() != null && !r.getMetiers().isEmpty()
+                ? new LinkedHashSet<>(r.getMetiers())
+                : new LinkedHashSet<>();
+        TypeEtablissement principal = r.getTypeEtablissement() != null
+                ? r.getTypeEtablissement()
+                : metiers.stream().findFirst().orElse(TypeEtablissement.AUTRE);
+
         DemandeDemo demande = depot.save(DemandeDemo.builder()
                 .nomEtablissement(r.getNomEtablissement().trim())
-                .typeEtablissement(r.getTypeEtablissement())
+                .typeEtablissement(principal)
+                .metiers(metiers)
                 .specialite(vide(r.getSpecialite()))
                 .ville(r.getVille().trim())
                 .quartier(vide(r.getQuartier()))
@@ -78,10 +96,12 @@ public class DemandeDemoService {
                 .message(vide(r.getMessage()))
                 .statut(StatutDemandeDemo.NOUVELLE)
                 .build());
+        demande.normaliserMetiers();
+        depot.save(demande);
 
         log.info("Demande de démonstration #{} : {} à {} ({}, {})",
                 demande.getId(), demande.getNomEtablissement(), demande.getVille(),
-                demande.getTypeEtablissement(), demande.getAnciennete());
+                demande.getMetiers(), demande.getAnciennete());
         return demande;
     }
 
@@ -138,13 +158,21 @@ public class DemandeDemoService {
         });
     }
 
+    /** Les métiers d'une demande, le principal en tête. */
+    private static java.util.List<TypeEtablissement> metiersDe(DemandeDemo d) {
+        LinkedHashSet<TypeEtablissement> ordonnes = new LinkedHashSet<>();
+        if (d.getTypeEtablissement() != null) ordonnes.add(d.getTypeEtablissement());
+        if (d.getMetiers() != null) ordonnes.addAll(d.getMetiers());
+        return java.util.List.copyOf(ordonnes);
+    }
+
     private static String vide(String v) {
         return v == null || v.isBlank() ? null : v.trim();
     }
 
     private static DemandeDemoResponse versReponse(DemandeDemo d) {
         return new DemandeDemoResponse(
-                d.getId(), d.getNomEtablissement(), d.getTypeEtablissement(),
+                d.getId(), d.getNomEtablissement(), d.getTypeEtablissement(), metiersDe(d),
                 d.getSpecialite(), d.getVille(), d.getQuartier(),
                 d.getAnciennete(), d.getNombreCollaborateurs(), d.getProprietaireLocal(),
                 d.getOutilActuel(), d.getPrenom(), d.getNom(), d.getTelephone(),

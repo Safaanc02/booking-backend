@@ -25,7 +25,7 @@ Aujourd'hui les routes mélangent français et anglais, et `/api/public/**` est 
 | `GET` | `/api/public/salons/{id}/prochaines-dispos?prestationId=&jours=7` | Les 7 prochains jours ayant au moins un créneau — évite au client de cliquer jour par jour |
 | `GET` | `/api/public/salons/{id}/avis?page=` | Avis publiés |
 | `GET` | `/api/public/villes?q=` | Autocomplétion de la barre de recherche |
-| `POST` | `/api/public/demandes-demo` | **Prise de contact d'un professionnel.** Ne crée aucun compte. Répond toujours `202`, y compris sur un doublon récent — distinguer les deux cas donnerait le moyen de savoir qui s'est manifesté |
+| `POST` | `/api/public/demandes-demo` | **Prise de contact d'un professionnel.** `metiers` accepte plusieurs valeurs ; `typeEtablissement` seul reste accepté, pour ne pas casser un appel existant. Ne crée aucun compte. Répond toujours `202`, y compris sur un doublon récent — distinguer les deux cas donnerait le moyen de savoir qui s'est manifesté |
 
 **Exemple — disponibilités**
 

@@ -11,15 +11,19 @@ import com.example.booking.model.Salon;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.EmployeRepository;
+import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.SalonRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 /** Lectures du catalogue exposées sans authentification. Seuls les salons ACTIF sont visibles. */
 @Service
@@ -29,18 +33,41 @@ public class PublicCatalogService {
     private final SalonRepository salonRepository;
     private final EmployeRepository employeRepository;
     private final EmployePrestationRepository employePrestationRepository;
+    private final PrestationRepository prestationRepository;
 
     public PublicCatalogService(SalonRepository salonRepository,
                                 EmployeRepository employeRepository,
-                                EmployePrestationRepository employePrestationRepository) {
+                                EmployePrestationRepository employePrestationRepository,
+                                PrestationRepository prestationRepository) {
         this.salonRepository = salonRepository;
         this.employeRepository = employeRepository;
         this.employePrestationRepository = employePrestationRepository;
+        this.prestationRepository = prestationRepository;
     }
 
+    /**
+     * Recherche publique, prix d'entrée compris.
+     *
+     * Le prix est réclamé en une requête pour toute la page, après la
+     * pagination : une carte sans tarif n'aide personne à choisir, et le
+     * contrat d'API l'annonçait déjà sans que rien ne le fournisse.
+     */
     public Page<SalonResponse> rechercher(String ville, String q, Pageable pageable) {
-        return salonRepository.rechercher(SalonStatut.ACTIF, vide(ville), vide(q), pageable)
-                .map(this::toResponse);
+        Page<Salon> page = salonRepository.rechercher(
+                SalonStatut.ACTIF, vide(ville), vide(q), pageable);
+
+        List<Long> ids = page.getContent().stream().map(Salon::getId).toList();
+        Map<Long, BigDecimal> prix = ids.isEmpty() ? Map.of()
+                : prestationRepository.prixDEntreeParSalon(ids).stream()
+                        .collect(Collectors.toMap(
+                                ligne -> (Long) ligne[0],
+                                ligne -> (BigDecimal) ligne[1]));
+
+        return page.map(salon -> {
+            SalonResponse reponse = toResponse(salon);
+            reponse.setPrixMin(prix.get(salon.getId()));
+            return reponse;
+        });
     }
 
     public SalonDetailResponse fiche(Long id) {

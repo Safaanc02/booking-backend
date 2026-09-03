@@ -3,6 +3,8 @@ package com.example.booking;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -11,6 +13,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,11 +58,31 @@ class BookingApplicationTests {
     private JdbcTemplate jdbc;
 
     @Test
-    @DisplayName("Le contexte démarre et les migrations Flyway sont appliquées")
-    void contexteEtMigrations() {
-        Integer migrations = jdbc.queryForObject(
+    @DisplayName("Le contexte démarre et toutes les migrations Flyway sont appliquées")
+    void contexteEtMigrations() throws IOException {
+        /*
+         * Le nombre attendu est compté sur le disque, jamais écrit en dur.
+         *
+         * La version précédente attendait 4 — le nombre de migrations du jour
+         * où elle a été écrite. Six migrations plus tard elle échouait, et
+         * personne ne l'a su : cette classe est ignorée faute de démon Docker
+         * exploitable en local, et la CI ne s'exécutait pas sur la branche de
+         * développement. Un test figé sur un décompte devient faux au premier
+         * ajout, c'est-à-dire tout de suite.
+         */
+        Resource[] fichiers = new PathMatchingResourcePatternResolver()
+                .getResources("classpath:db/migration/V*.sql");
+
+        Integer appliquees = jdbc.queryForObject(
                 "SELECT count(*) FROM flyway_schema_history WHERE success = true", Integer.class);
-        assertThat(migrations).isEqualTo(4);
+        Integer echouees = jdbc.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE success = false", Integer.class);
+
+        assertThat(fichiers).as("aucune migration trouvée sur le classpath").isNotEmpty();
+        assertThat(echouees).as("une migration a échoué").isZero();
+        assertThat(appliquees)
+                .as("%d fichiers de migration, %d appliquées", fichiers.length, appliquees)
+                .isEqualTo(fichiers.length);
     }
 
     @Test

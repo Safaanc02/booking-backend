@@ -78,7 +78,12 @@ jobs:
           cache: maven
 
       - name: Appliquer les migrations et valider le schéma
+        # package avant start : spring-boot:start cherche une classe
+        # principale dans les classes compilées, et échouait sur « Unable to
+        # find a suitable main class » faute d'avoir compilé quoi que ce soit.
+        # Les tests sont ignorés ici, l'autre tâche s'en charge.
         run: |
+          ./mvnw -B --no-transfer-progress package -DskipTests
           ./mvnw -B --no-transfer-progress spring-boot:start spring-boot:stop
         env:
           DB_URL: jdbc:postgresql://localhost:5432/beauty_booking

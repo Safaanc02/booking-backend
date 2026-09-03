@@ -1,0 +1,152 @@
+# Pile complète et autonome, pour faire essayer l'application.
+#
+# Différences avec docker-compose.yml, qui sert au développement :
+#
+#   • une seule adresse exposée. Caddy sert le site à la racine, l'API sous
+#     /api, Keycloak sous /auth. Il n'y a donc plus de CORS, plus d'URI de
+#     redirection à réécrire par environnement, et une seule adresse à
+#     transmettre.
+#
+#   • Keycloak démarre en mode « start » sur PostgreSQL, et non « start-dev ».
+#     En développement il garde tout en mémoire : chaque redémarrage effaçait
+#     les comptes créés depuis l'import du realm. Inacceptable dès que
+#     quelqu'un d'autre essaie l'application.
+#
+#   • aucun mot de passe par défaut. Les valeurs de développement sont
+#     publiques : sur une adresse joignable, elles reviennent à ne rien
+#     protéger.
+#
+# ⚠️ Ce n'est pas une mise en production. Les comptes de démonstration ont
+#    pour mot de passe leur identifiant, et la boîte aux lettres de test est
+#    lisible par quiconque connaît l'adresse — donc quiconque connaît
+#    l'adresse peut devenir administrateur. Traitez l'adresse comme un secret,
+#    et n'y mettez aucune donnée réelle de client.
+#
+#   ./scripts/partager.sh https://mon-adresse-publique
+
+name: booking-partage
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: beauty_booking
+      POSTGRES_USER: booking_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?definir DB_PASSWORD dans partage.env}
+      TZ: Africa/Casablanca
+    volumes:
+      - donnees_postgres:/var/lib/postgresql/data
+      # Crée la base de Keycloak. Ne s'exécute qu'à la première initialisation.
+      - ./docker/init-bases.sql:/docker-entrypoint-initdb.d/init-bases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking_user -d beauty_booking"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: start --optimized=false --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?definir KEYCLOAK_ADMIN_PASSWORD dans partage.env}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: booking_user
+      KC_DB_PASSWORD: ${DB_PASSWORD}
+      # Servi sous /auth : une seule adresse publique pour tout.
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HTTP_ENABLED: "true"
+      # L'adresse publique, telle que le navigateur la voit. Elle détermine
+      # l'émetteur inscrit dans les jetons — que l'API vérifie ensuite.
+      # Le chemin est inclus, et c'est nécessaire : donnée en URL complète,
+      # cette valeur remplace http-relative-path au lieu de s'y ajouter.
+      # Sans « /auth », Keycloak annonçait ses points d'entrée en /realms/…,
+      # que le proxy envoie au site — et la connexion tombait sur la page 404
+      # de l'application.
+      #
+      # Le protocole y figure aussi, et c'est lui qui dit à Keycloak s'il est
+      # derrière du TLS : une adresse en http:// suffit à ne pas l'exiger.
+      KC_HOSTNAME: ${URL_PUBLIQUE:?definir URL_PUBLIQUE dans partage.env}/auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      TZ: Africa/Casablanca
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # L'image ne contient ni curl ni wget : on ouvre une socket sur le port
+      # de management. Les CRLF sont exigés par HTTP.
+      # Le chemin porte le préfixe : l'interface de management reprend par
+      # défaut la valeur de http-relative-path, donc /auth/health/ready et non
+      # /health/ready. Sondé au mauvais endroit, un Keycloak parfaitement
+      # démarré restait « health: starting » indéfiniment, et l'API — qui
+      # l'attend — ne démarrait jamais.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /auth/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
+    restart: unless-stopped
+
+  api:
+    build: .
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/beauty_booking
+      DB_USER: booking_user
+      DB_PASSWORD: ${DB_PASSWORD}
+      # L'émetteur doit correspondre au caractère près à celui que Keycloak
+      # inscrit dans les jetons, sans quoi toute requête authentifiée est
+      # rejetée avec un message peu parlant.
+      KEYCLOAK_ISSUER_URI: ${URL_PUBLIQUE}/auth/realms/booking-realm
+      # Les appels sortants restent sur le réseau interne : dans un conteneur,
+      # « localhost » désigne l'API, et sortir par l'adresse publique pour
+      # revenir aussitôt ne marche que par chance.
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/auth/realms/booking-realm/protocol/openid-connect/certs
+      KEYCLOAK_BASE_URL: http://keycloak:8080/auth
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?definir KEYCLOAK_ADMIN_CLIENT_SECRET dans partage.env}
+      # Sert à composer les liens des e-mails : invitation d'un gérant,
+      # annulation d'un rendez-vous.
+      URL_PUBLIQUE: ${URL_PUBLIQUE}
+      # Même origine que le site : aucune requête ne traverse plus les
+      # frontières du navigateur. La valeur reste utile si l'on ouvre un jour
+      # une seconde façade.
+      CORS_ORIGINS: ${URL_PUBLIQUE}
+      # Les liens d'annulation sont signés : un secret connu se contrefait.
+      ANNULATION_SECRET: ${ANNULATION_SECRET:?definir ANNULATION_SECRET dans partage.env}
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      TZ: Africa/Casablanca
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      TZ: Africa/Casablanca
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      # Sert l'interface sous /courrier, pour tenir sur la même adresse.
+      MP_WEBROOT: courrier
+    restart: unless-stopped
+
+  web:
+    build: ../booking-frontend
+    ports:
+      - "${PORT_PUBLIC:-8090}:80"
+    depends_on:
+      - api
+      - keycloak
+      - mailpit
+    restart: unless-stopped
+
+volumes:
+  donnees_postgres:

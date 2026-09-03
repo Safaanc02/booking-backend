@@ -133,6 +133,93 @@ que fait `donnees-demo.mjs` avec l'API d'administration.
 
 Console Keycloak : http://localhost:8081 (identifiants dans `.env`).
 
+## Faire essayer l'application à quelqu'un
+
+```bash
+cd booking-backend
+./scripts/partager.sh                            # essai local, sur le port 8090
+./scripts/partager.sh https://essai.exemple.ma   # adresse publique
+```
+
+Le script construit les images, démarre la pile, attend qu'elle réponde, peuple
+le jeu de démonstration, puis affiche l'adresse à transmettre et les comptes.
+La première exécution prend quelques minutes : Maven et npm téléchargent tout.
+Les deux dépôts doivent être clonés côte à côte dans le même dossier.
+
+### Tout tient sur une seule adresse
+
+```
+https://essai.exemple.ma/            le site
+https://essai.exemple.ma/api         l'API
+https://essai.exemple.ma/auth        Keycloak
+https://essai.exemple.ma/courrier    les e-mails envoyés, lisibles
+```
+
+Ce n'est pas un détail d'ergonomie. Une seule origine, et il n'y a plus de
+CORS, plus d'adresse d'API à recompiler dans le site, et les URI de redirection
+du realm deviennent **relatives** — le fichier d'import fonctionne alors sur
+n'importe quel domaine sans être réédité. C'est la panne la plus banale d'un
+environnement de démonstration, et elle disparaît.
+
+`/courrier` est une boîte aux lettres de test qui capture les envois sans les
+livrer. Elle permet de suivre une invitation de gérant ou un lien d'annulation
+de bout en bout, sans configurer le moindre serveur d'envoi.
+
+### Deux façons d'obtenir une adresse
+
+**Un tunnel, depuis votre machine.** Gratuit, immédiat, sans compte. L'adresse
+change à chaque lancement et l'application n'est joignable que tant que votre
+machine est allumée.
+
+```bash
+brew install cloudflared
+cloudflared tunnel --url http://localhost:8090   # affiche une adresse https
+./scripts/partager.sh https://celle-qu-il-affiche.trycloudflare.com
+```
+
+L'ordre compte : le tunnel d'abord, pour connaître l'adresse, puis le script —
+cette adresse est inscrite dans les jetons émis par Keycloak et dans les liens
+des e-mails.
+
+**Un petit serveur.** Cinq à quinze euros par mois, adresse stable, joignable
+quand votre machine est éteinte. Clonez les deux dépôts, faites pointer un
+sous-domaine vers le serveur, et lancez la même commande. C'est aussi le
+chemin vers la production : il ne restera qu'à confier le TLS à Caddy, qui sait
+le faire seul dès qu'un nom de domaine lui est donné.
+
+### Ce que la pile fait différemment du développement
+
+| | Développement | Pile partagée |
+|---|---|---|
+| Adresses | un port par service | une seule, par un proxy |
+| Keycloak | `start-dev`, tout en mémoire | `start` sur PostgreSQL |
+| Site | Vite, rechargement à chaud | compilé, servi par Caddy |
+| Secrets | valeurs publiques par défaut | tirés au sort, aucun défaut |
+
+Le mode de Keycloak est le point décisif. En développement il garde ses données
+en mémoire : chaque redémarrage effaçait les comptes créés depuis l'import du
+realm. Acceptable seul devant son écran, intenable dès que quelqu'un d'autre
+essaie l'application.
+
+### ⚠️ Ce n'est pas une mise en production
+
+Les comptes de démonstration ont pour mot de passe leur identifiant, et la
+boîte aux lettres de test est lisible par quiconque connaît l'adresse — donc
+quiconque connaît l'adresse peut se donner les droits d'administration.
+
+**Traitez l'adresse comme un secret, et n'y saisissez aucune donnée réelle de
+client.** Pour aller au-delà de l'essai entre associés, il faut au minimum :
+supprimer le jeu de démonstration, changer le secret du client
+`booking-backend-admin` dans le realm *et* dans `partage.env`, brancher un vrai
+serveur d'envoi à la place de la boîte de test, et retirer `/courrier` du
+proxy.
+
+```bash
+docker compose -f docker-compose.partage.yml down     # arrêter
+docker compose -f docker-compose.partage.yml down -v  # tout effacer
+docker compose -f docker-compose.partage.yml logs -f api
+```
+
 ## Services
 
 | Service | URL |
@@ -167,6 +254,17 @@ cd booking-frontend && npm run verifier:pro     # installation d'un salon
 cd booking-frontend && npm run verifier:avis    # cycle d'un avis client
 cd booking-frontend && npm run verifier:referencement  # arrivée d'un salon, de l'admin au gérant
 cd booking-frontend && npm run verifier:demande-demo   # prise de contact, de la demande au salon
+```
+
+Les suites acceptent les adresses en variables d'environnement, ce qui permet de
+vérifier la pile partagée avec les mêmes tests que le développement — sans quoi
+la configuration livrée ne serait jamais celle qui a été essayée :
+
+```bash
+cd booking-frontend
+BASE_URL=http://localhost:8090 API_URL=http://localhost:8090 \
+KC_URL=http://localhost:8090/auth MAILPIT_URL=http://localhost:8090/courrier \
+  npm run verifier:referencement
 ```
 
 Les scripts de navigateur supposent la stack démarrée et au moins un salon

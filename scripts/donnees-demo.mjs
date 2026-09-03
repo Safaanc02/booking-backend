@@ -411,9 +411,15 @@ const attente = await appel('GET', '/api/admin/salons?statut=EN_ATTENTE', null, 
 console.log(`  ${attente.totalElements} salon en attente : ${attente.content.map((s) => s.nom).join(', ')}`)
 
 console.log()
-console.log('  \x1b[36mInterface\x1b[0m   http://localhost:5173')
-console.log('  \x1b[36mEmails\x1b[0m      http://localhost:8025')
-console.log('  \x1b[36mAPI\x1b[0m         http://localhost:8080/swagger-ui.html')
+// Les adresses suivent l'environnement : le script sert au développement,
+// où chaque service a son port, comme à la pile partagée, où tout tient
+// derrière une seule adresse. Les afficher en dur envoyait la personne qui
+// vient d'installer la pile vers des ports qui n'écoutent rien chez elle.
+const SITE = process.env.BASE_URL ?? 'http://localhost:5173'
+const COURRIER = process.env.MAILPIT_URL ?? 'http://localhost:8025'
+console.log(`  \x1b[36mInterface\x1b[0m   ${SITE}`)
+console.log(`  \x1b[36mEmails\x1b[0m      ${COURRIER}`)
+console.log(`  \x1b[36mAPI\x1b[0m         ${API}/swagger-ui.html`)
 console.log()
 console.log('  \x1b[36mComptes\x1b[0m — mot de passe identique à l\'identifiant')
 console.log('    client1                    réserver, noter, annuler')

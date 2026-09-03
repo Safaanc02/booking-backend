@@ -1,0 +1,11 @@
+# Le contexte de construction part en entier vers le démon Docker : autant ne
+# pas y envoyer les secrets, l'historique Git ni les artefacts de compilation.
+target/
+.git/
+.env
+*.env
+!*.env.example
+docs/
+scripts/
+keycloak/
+*.md

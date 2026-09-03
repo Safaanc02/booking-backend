@@ -82,6 +82,24 @@ L'**ICE** (Identifiant Commun de l'Entreprise, quinze chiffres) est facultatif e
 
 Deux gardes, pas de captcha : le débit est limité par IP sur `/api/public/**`, et une même adresse ne peut pas redéposer dans les vingt-quatre heures — au-delà, un gérant qui rappelle parce que personne ne l'a contacté est un signal, pas un doublon.
 
+### L'adresse comme identifiant : oui pour les pros, non pour le realm
+
+Les comptes professionnels sont créés par le référencement avec l'adresse pour
+identifiant — un seul élément à retenir, six mois plus tard. C'est fait dans le
+code, explicitement.
+
+L'option Keycloak `registrationEmailAsUsername` semblait généraliser cette
+idée aux inscriptions clients, et retirait un champ du formulaire. Essayée,
+puis écartée : elle ne gouverne pas seulement le formulaire, elle réécrit
+l'identifiant de **tout** compte, y compris ceux créés par l'API
+d'administration et ceux de l'import du realm. `admin`, `pro1` et `client1`
+sont devenus `admin@booking.ma` et compagnie, ce qui casse la convention des
+comptes de démonstration — mot de passe égal à l'identifiant — sur laquelle
+reposent le jeu de données et les six suites de vérification.
+
+Un champ de moins sur le formulaire d'inscription client ne valait pas de
+transformer chaque identifiant de test en adresse longue à taper.
+
 **Ce que le gérant ne fait jamais** : créer un établissement. `POST /api/salons` est réservé à l'administration, et l'espace professionnel ne propose aucun formulaire de création. Un compte tombé sans salon — un membre d'équipe, un rattachement manqué — est orienté, pas invité à recommencer.
 
 **Objectif** : de l'étape 2 à l'étape 5 dans **une seule visite**. C'est ce délai, et non celui d'un formulaire d'inscription, qui décide de l'adoption.

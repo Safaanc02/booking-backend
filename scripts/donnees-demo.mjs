@@ -227,11 +227,12 @@ const darZine = await installer({
     { nom: 'Coupe femme', categorie: 'Coupe', prix: 200, dureeMinutes: 45 },
     { nom: 'Brushing', categorie: 'Coiffage', prix: 120, dureeMinutes: 30 },
     { nom: 'Balayage', categorie: 'Couleur', prix: 650, dureeMinutes: 120 },
+    { nom: 'Soin à l’huile d’argan', categorie: 'Soin', prix: 250, dureeMinutes: 45 },
   ],
   equipe: [
     // Sofia a un compte PRATICIEN : elle consulte son planning, rien de plus.
     { prenom: 'Sofia', nom: 'Alami', titre: 'Coloriste',
-      fait: ['Coupe femme', 'Brushing', 'Balayage'],
+      fait: ['Coupe femme', 'Brushing', 'Balayage', 'Soin à l’huile d’argan'],
       compte: { identifiant: 'equipe.sofia', prenom: 'Sofia', nom: 'Alami',
                 email: 'sofia@darzine.ma' } },
     // Youssef ne fait pas la couleur : le moteur ne doit jamais le proposer
@@ -281,10 +282,11 @@ const nails = await installer({
     { nom: 'Manucure simple', categorie: 'Mains', prix: 100, dureeMinutes: 30 },
     { nom: 'Semi-permanent', categorie: 'Mains', prix: 180, dureeMinutes: 60 },
     { nom: 'Pédicure', categorie: 'Pieds', prix: 150, dureeMinutes: 45 },
+    { nom: 'Henné mains', categorie: 'Henné', prix: 150, dureeMinutes: 45 },
   ],
   equipe: [
     { prenom: 'Imane', nom: 'Ouazzani', titre: 'Prothésiste ongulaire',
-      fait: ['Manucure simple', 'Semi-permanent', 'Pédicure'] },
+      fait: ['Manucure simple', 'Semi-permanent', 'Pédicure', 'Henné mains'] },
   ],
 })
 
@@ -297,12 +299,16 @@ const firdaws = await installer({
     email: 'contact@alfirdaws.ma', categorie: 'SPA', delaiAnnulationHeures: 48,
   },
   prestations: [
-    { nom: 'Hammam traditionnel', categorie: 'Hammam', prix: 200, dureeMinutes: 60 },
-    { nom: 'Massage relaxant', categorie: 'Massage', prix: 400, dureeMinutes: 60 },
+    // Le vocabulaire d'un vrai hammam : c'est ce qu'on y demande, et ce qui
+    // rend la démonstration crédible devant un gérant du métier.
+    { nom: 'Hammam beldi', categorie: 'Hammam', prix: 200, dureeMinutes: 60 },
+    { nom: 'Gommage au savon noir et gant kessa', categorie: 'Hammam', prix: 150, dureeMinutes: 40 },
+    { nom: 'Enveloppement au rhassoul', categorie: 'Hammam', prix: 200, dureeMinutes: 45 },
+    { nom: 'Massage à l’huile d’argan', categorie: 'Massage', prix: 400, dureeMinutes: 60 },
   ],
   equipe: [
     { prenom: 'Khadija', nom: 'Bennis', titre: 'Praticienne',
-      fait: ['Hammam traditionnel', 'Massage relaxant'] },
+      fait: ['Hammam beldi', 'Gommage au savon noir et gant kessa', 'Enveloppement au rhassoul', 'Massage à l’huile d’argan'] },
   ],
 })
 

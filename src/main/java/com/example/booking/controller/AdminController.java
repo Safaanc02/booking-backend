@@ -2,13 +2,17 @@ package com.example.booking.controller;
 
 import com.example.booking.comptes.ReferencementService;
 import com.example.booking.dto.AvisResponse;
+import com.example.booking.dto.DemandeDemoResponse;
 import com.example.booking.dto.ReferencementResponse;
 import com.example.booking.dto.ReferencementSalonRequest;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutAvis;
+import com.example.booking.model.enums.StatutDemandeDemo;
 import com.example.booking.notification.RappelPlanificateur;
 import com.example.booking.service.AvisService;
+import com.example.booking.service.CurrentUserService;
+import com.example.booking.service.DemandeDemoService;
 import com.example.booking.service.SalonService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,15 +39,53 @@ public class AdminController {
 
     private final AvisService avis;
     private final ReferencementService referencement;
+    private final DemandeDemoService demandes;
+    private final CurrentUserService utilisateurCourant;
 
     public AdminController(SalonService salonService,
                            RappelPlanificateur rappels,
                            AvisService avis,
-                           ReferencementService referencement) {
+                           ReferencementService referencement,
+                           DemandeDemoService demandes,
+                           CurrentUserService utilisateurCourant) {
         this.salonService = salonService;
         this.rappels = rappels;
         this.avis = avis;
         this.referencement = referencement;
+        this.demandes = demandes;
+        this.utilisateurCourant = utilisateurCourant;
+    }
+
+    /* ---------- Demandes de démonstration ---------- */
+
+    /** La file d'attente commerciale, par statut. */
+    @GetMapping("/demandes-demo")
+    public ResponseEntity<Page<DemandeDemoResponse>> demandes(
+            @RequestParam(defaultValue = "NOUVELLE") StatutDemandeDemo statut,
+            @PageableDefault(size = 50) Pageable pageable) {
+        return ResponseEntity.ok(demandes.lister(statut, pageable));
+    }
+
+    /** Combien de demandes attendent d'être traitées — pour la pastille de l'onglet. */
+    @GetMapping("/demandes-demo/nouvelles")
+    public ResponseEntity<Long> nouvellesDemandes() {
+        return ResponseEntity.ok(demandes.compter(StatutDemandeDemo.NOUVELLE));
+    }
+
+    /**
+     * Fait avancer une demande, en notant qui s'en est occupé.
+     *
+     * L'agent est résolu par getOrCreate : un administrateur qui traite une
+     * demande à sa toute première requête authentifiée n'a pas encore de
+     * miroir local, et l'attribution serait perdue.
+     */
+    @PatchMapping("/demandes-demo/{id}")
+    public ResponseEntity<DemandeDemoResponse> traiterDemande(
+            @PathVariable Long id,
+            @RequestParam StatutDemandeDemo statut,
+            @RequestParam(required = false) String note) {
+        return ResponseEntity.ok(
+                demandes.changerStatut(id, statut, note, utilisateurCourant.getOrCreate()));
     }
 
     /**

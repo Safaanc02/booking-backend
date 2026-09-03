@@ -10,6 +10,8 @@ import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.repository.SalonRepository;
 import com.example.booking.repository.UserRepository;
+import com.example.booking.service.CurrentUserService;
+import com.example.booking.service.DemandeDemoService;
 import com.example.booking.service.SalonService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,15 +37,21 @@ public class ReferencementService {
     private final UserRepository userRepository;
     private final SalonRepository salonRepository;
     private final SalonService salonService;
+    private final DemandeDemoService demandes;
+    private final CurrentUserService utilisateurCourant;
 
     public ReferencementService(ComptesKeycloakService comptes,
                                 UserRepository userRepository,
                                 SalonRepository salonRepository,
-                                SalonService salonService) {
+                                SalonService salonService,
+                                DemandeDemoService demandes,
+                                CurrentUserService utilisateurCourant) {
         this.comptes = comptes;
         this.userRepository = userRepository;
         this.salonRepository = salonRepository;
         this.salonService = salonService;
+        this.demandes = demandes;
+        this.utilisateurCourant = utilisateurCourant;
     }
 
     @Transactional
@@ -86,7 +94,13 @@ public class ReferencementService {
                 .owner(proprietaire)
                 .build());
 
-        // 5. L'invitation. Volontairement après l'enregistrement : un serveur
+        // 5. La demande de démonstration qui a mené là, si elle existe, est
+        // marquée convertie. Un démarchage direct n'en a pas : on ne rattache
+        // alors rien, et c'est le cas normal au début.
+        demandes.rattacherAuSalon(email, salon, utilisateurCourant.getOrCreate())
+                .ifPresent(id -> log.info("Référencement issu de la demande #{}", id));
+
+        // 6. L'invitation. Volontairement après l'enregistrement : un serveur
         // de messagerie indisponible ne doit pas faire perdre le référencement.
         boolean invitation = comptes.inviter(keycloakId, email);
 

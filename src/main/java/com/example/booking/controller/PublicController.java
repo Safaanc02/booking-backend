@@ -3,20 +3,25 @@ package com.example.booking.controller;
 import com.example.booking.dto.ApercuAnnulation;
 import com.example.booking.dto.AvisResponse;
 import com.example.booking.dto.CreneauDisponible;
+import com.example.booking.dto.DemandeDemoConfirmation;
+import com.example.booking.dto.DemandeDemoRequest;
 import com.example.booking.dto.DisponibilitesResponse;
 import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
+import com.example.booking.service.DemandeDemoService;
 import com.example.booking.service.DisponibiliteService;
 import com.example.booking.service.AvisService;
 import com.example.booking.service.ReservationService;
 import com.example.booking.service.PublicCatalogService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,15 +45,39 @@ public class PublicController {
 
     private final AvisService avis;
     private final ReservationService reservations;
+    private final DemandeDemoService demandes;
 
     public PublicController(PublicCatalogService catalogue,
                             DisponibiliteService disponibilites,
                             AvisService avis,
-                            ReservationService reservations) {
+                            ReservationService reservations,
+                            DemandeDemoService demandes) {
         this.catalogue = catalogue;
         this.disponibilites = disponibilites;
         this.avis = avis;
         this.reservations = reservations;
+        this.demandes = demandes;
+    }
+
+    /* ---------- Demande de démonstration ---------- */
+
+    /**
+     * Un professionnel demande à être rappelé.
+     *
+     * Rien n'est créé côté comptes : c'est une prise de contact. La réponse
+     * est volontairement identique qu'on ait enregistré la demande ou écarté
+     * un doublon récent — la route est publique, et distinguer les deux cas
+     * donnerait le moyen de savoir qui s'est déjà manifesté.
+     *
+     * Le débit est limité par IP en amont, dans RateLimitFilter.
+     */
+    @PostMapping("/demandes-demo")
+    public ResponseEntity<DemandeDemoConfirmation> demanderDemo(
+            @Valid @RequestBody DemandeDemoRequest requete) {
+        demandes.enregistrer(requete);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new DemandeDemoConfirmation(
+                "Votre demande est enregistrée. Un conseiller vous rappelle sous 48 heures "
+                        + "pour convenir d'une installation."));
     }
 
     /* ---------- Annulation depuis un email ---------- */

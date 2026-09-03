@@ -54,7 +54,8 @@ Un professionnel ne s'inscrit pas. **L'équipe installe son salon pour lui**, pu
 
 | # | Étape | Qui | Écran / route | Objectif |
 |---|---|---|---|---|
-| 1 | Prise de contact | conseiller | terrain, téléphone | Qualifier l'établissement |
+| 0 | Se manifeste | gérant | `/professionnels` · `POST /api/public/demandes-demo` | Formulaire en trois écrans, aucun compte créé |
+| 1 | Prise de contact | conseiller | `admin` → *Demandes* | Qualifier, noter, ordonner les visites |
 | 2 | Référencement du salon | conseiller | `admin` → *Référencer* · `POST /api/admin/salons` | Fiche + compte du gérant, en un envoi |
 | 3 | Le gérant choisit son mot de passe | gérant | lien reçu par e-mail | Aucun mot de passe ne circule en clair |
 | 4 | Paramétrage assisté | conseiller **avec** le gérant | `pro/Prestations`, `Equipe`, `Horaires` | **Pré-remplir par métier** : « Coupe femme 45 min », « Barbe 20 min »… |
@@ -63,7 +64,23 @@ Un professionnel ne s'inscrit pas. **L'équipe installe son salon pour lui**, pu
 | 7 | Consulte son agenda | gérant | `pro/Agenda` | Vue jour par défaut sur mobile, semaine sur desktop |
 | 8 | Bloque un créneau | gérant | `pro/Agenda` | Pause, rendez-vous perso, congé |
 
+L'étape 0 n'est pas obligatoire : un salon démarché sur le terrain n'a déposé aucune demande, et le conseiller référence directement. Quand la demande existe, le formulaire de référencement s'ouvre prérempli avec ce qu'elle a recueilli, et la demande passe en `CONVERTIE` avec un lien vers le salon créé — c'est ce lien qui rend le rendement du formulaire mesurable.
+
 Les étapes 2 et 5 se confondent quand l'installation se fait sur place, avec le gérant : le conseiller cochant « mettre en ligne tout de suite ».
+
+### Ce que le formulaire demande, et dans quel ordre
+
+Trois écrans plutôt qu'un bloc de quatorze champs. L'ordre n'est pas cosmétique : d'abord ce dont le gérant est fier, ensuite ce qui nous sert à le classer, ses coordonnées en dernier.
+
+| Écran | Champs | Pourquoi là |
+|---|---|---|
+| L'établissement | métier, nom, ville, quartier, spécialité | Facile à répondre, engage la suite |
+| L'activité | ancienneté, taille de l'équipe, local en propriété, outil actuel | Décide de l'ordre des visites |
+| Le contact | prénom, nom, téléphone, e-mail, **ICE**, message | Réclamé une fois le reste investi |
+
+L'**ICE** (Identifiant Commun de l'Entreprise, quinze chiffres) est facultatif et ferme la marche : c'est l'équivalent marocain du SIRET, il ne sert qu'au contrat, et personne ne le connaît de mémoire. Le demander tôt transforme une prise de contact en formalité administrative.
+
+Deux gardes, pas de captcha : le débit est limité par IP sur `/api/public/**`, et une même adresse ne peut pas redéposer dans les vingt-quatre heures — au-delà, un gérant qui rappelle parce que personne ne l'a contacté est un signal, pas un doublon.
 
 **Ce que le gérant ne fait jamais** : créer un établissement. `POST /api/salons` est réservé à l'administration, et l'espace professionnel ne propose aucun formulaire de création. Un compte tombé sans salon — un membre d'équipe, un rattachement manqué — est orienté, pas invité à recommencer.
 

@@ -165,6 +165,7 @@ cd booking-frontend && npm run verifier:tunnel  # parcours client, vrai navigate
 cd booking-frontend && npm run verifier:pro     # installation d'un salon
 cd booking-frontend && npm run verifier:avis    # cycle d'un avis client
 cd booking-frontend && npm run verifier:referencement  # arrivée d'un salon, de l'admin au gérant
+cd booking-frontend && npm run verifier:demande-demo   # prise de contact, de la demande au salon
 ```
 
 Les scripts de navigateur supposent la stack démarrée et au moins un salon

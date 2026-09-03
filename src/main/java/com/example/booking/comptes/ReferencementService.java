@@ -92,7 +92,18 @@ public class ReferencementService {
                 .delaiAnnulationHeures(s.getDelaiAnnulationHeures() != null
                         ? s.getDelaiAnnulationHeures() : 24)
                 .owner(proprietaire)
+                // Les métiers exercés, et non la seule catégorie : ce service
+                // construit le salon lui-même au lieu de passer par
+                // SalonService, si bien qu'il faut y penser ici. Les oublier
+                // laissait la table de liaison vide, donc le salon absent de
+                // tout filtre par métier — y compris celui de sa propre
+                // couleur.
+                .metiers(s.getMetiers() != null
+                        ? new java.util.LinkedHashSet<>(s.getMetiers())
+                        : new java.util.LinkedHashSet<>())
                 .build());
+        salon.normaliserMetiers();
+        salonRepository.save(salon);
 
         // 5. La demande de démonstration qui a mené là, si elle existe, est
         // marquée convertie. Un démarchage direct n'en a pas : on ne rattache

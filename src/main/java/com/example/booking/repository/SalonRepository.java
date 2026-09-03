@@ -1,6 +1,7 @@
 package com.example.booking.repository;
 
 import com.example.booking.model.Salon;
+import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.model.enums.SalonStatut;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,8 +14,16 @@ import java.util.List;
 public interface SalonRepository extends JpaRepository<Salon, Long> {
 
     /**
-     * Recherche publique. Ville, texte libre et catégorie sont tous facultatifs ;
+     * Recherche publique. Ville, texte libre et métier sont tous facultatifs ;
      * seuls les salons ACTIF remontent.
+     *
+     * Le métier est filtré ici, et non dans le navigateur. L'interface le
+     * faisait sur la page reçue, si bien qu'un filtre ne voyait que les vingt
+     * premiers résultats : « Onglerie » pouvait ne rien rendre alors que la
+     * ville comptait trente salons dont plusieurs ongleries.
+     *
+     * Le test porte sur l'ensemble des métiers exercés, pas sur la seule
+     * catégorie principale — c'est tout l'objet de la table de liaison.
      *
      * Le CAST(:param AS String) n'est pas décoratif : sans lui PostgreSQL ne peut
      * pas inférer le type d'un paramètre nul, le traite comme du bytea, et échoue
@@ -28,6 +37,7 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
             WHERE s.statut = :statut
               AND (CAST(:ville AS String) IS NULL
                    OR LOWER(s.ville) = LOWER(CAST(:ville AS String)))
+              AND (:metier IS NULL OR :metier MEMBER OF s.metiers)
               AND (CAST(:q AS String) IS NULL
                    OR LOWER(s.nom)      LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
                    OR LOWER(s.adresse)  LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
@@ -36,6 +46,7 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
     Page<Salon> rechercher(@Param("statut") SalonStatut statut,
                            @Param("ville") String ville,
                            @Param("q") String q,
+                           @Param("metier") SalonCategorie metier,
                            Pageable pageable);
 
     @Query("SELECT DISTINCT s.ville FROM Salon s WHERE s.ville IS NOT NULL AND s.statut = :statut ORDER BY s.ville")

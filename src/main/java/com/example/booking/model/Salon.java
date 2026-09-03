@@ -13,6 +13,8 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,10 +58,52 @@ public class Salon {
     private String telephone;
     private String email;
 
+    /**
+     * Métier principal.
+     *
+     * Conservé alors que le salon peut en exercer plusieurs : l'identité
+     * visuelle — la teinte de sa couverture, dans la liste comme sur sa fiche
+     * — a besoin d'une seule couleur. Un établissement qui en afficherait
+     * trois n'en aurait aucune.
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private SalonCategorie categorie = SalonCategorie.COIFFURE;
+
+    /**
+     * Tous les métiers exercés, principal compris.
+     *
+     * L'institut de quartier fait la coiffure, l'onglerie et l'esthétique ;
+     * n'en retenir qu'un le rendait introuvable pour les deux autres.
+     *
+     * EAGER, contre l'usage : cet ensemble est lu à chaque affichage de salon
+     * — liste de résultats, fiche, back-office — et jamais indépendamment.
+     * En LAZY, chaque page de vingt résultats déclenchait vingt requêtes
+     * supplémentaires, ou levait une LazyInitializationException hors
+     * transaction, ce qui s'est déjà produit ailleurs dans ce projet.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "salon_metier",
+            joinColumns = @JoinColumn(name = "salon_id"))
+    @Column(name = "metier", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Set<SalonCategorie> metiers = new LinkedHashSet<>();
+
+    /**
+     * Le métier principal fait toujours partie des métiers exercés.
+     *
+     * Appelé par le service avant enregistrement plutôt que laissé à la
+     * discipline des appelants : un salon dont la catégorie ne figurerait pas
+     * dans ses métiers serait absent du filtre correspondant à sa propre
+     * couleur — l'incohérence la plus déroutante possible pour un visiteur.
+     */
+    public void normaliserMetiers() {
+        if (metiers == null) metiers = new LinkedHashSet<>();
+        if (categorie != null) metiers.add(categorie);
+    }
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

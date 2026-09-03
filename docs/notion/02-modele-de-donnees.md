@@ -213,3 +213,28 @@ Ces changements sont trop lourds pour `ddl-auto=update`, qui ne sait ni renommer
 - `V6__contrainte_exclusion.sql`
 
 Puis `spring.jpa.hibernate.ddl-auto=validate` en permanence.
+
+## Un salon exerce plusieurs métiers
+
+`salon.categorie` n'en autorisait qu'un. Or l'institut de quartier fait
+couramment la coiffure, l'onglerie et l'esthétique, et un spa vend du hammam
+autant que des soins : forcer un choix rendait le salon **introuvable pour
+deux de ses trois activités**.
+
+La table `salon_metier` porte l'ensemble, et `salon.categorie` reste le métier
+**principal**. Ce n'est pas une facilité de migration : l'identité visuelle du
+salon — la teinte de sa couverture, dans la liste comme sur sa fiche — a
+besoin d'une seule couleur. Un établissement qui en afficherait trois n'en
+aurait aucune.
+
+| | |
+|---|---|
+| Clé | `(salon_id, metier)` — un métier ne se déclare pas deux fois |
+| Index | `(metier, salon_id)` pour le filtre de la recherche publique |
+| Invariant | le métier principal fait toujours partie de l'ensemble, garanti par `Salon.normaliserMetiers()` |
+| Chargement | `EAGER`, contre l'usage : l'ensemble est lu à chaque affichage de salon et jamais seul. En `LAZY`, une page de vingt résultats déclenchait vingt requêtes de plus |
+
+Le filtre `GET /api/public/salons?metier=` teste l'appartenance à cet ensemble,
+côté serveur. L'interface le faisait sur la page reçue : « Onglerie » pouvait
+ne rien rendre alors que la ville comptait plusieurs ongleries, hors des vingt
+premiers résultats.

@@ -9,6 +9,7 @@ import com.example.booking.dto.DisponibilitesResponse;
 import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
+import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.service.DemandeDemoService;
 import com.example.booking.service.DisponibiliteService;
 import com.example.booking.service.AvisService;
@@ -115,13 +116,21 @@ public class PublicController {
         return cache60(avis.parSalon(id, PageRequest.of(page, Math.min(size, 50))));
     }
 
+    /**
+     * Recherche publique.
+     *
+     * `metier` filtre sur l'ensemble des métiers exercés, pas sur la seule
+     * catégorie principale : un institut déclaré en coiffure qui fait aussi
+     * les ongles remonte bien sous « Onglerie ».
+     */
     @GetMapping("/salons")
     public ResponseEntity<Page<SalonResponse>> rechercher(
             @RequestParam(required = false) String ville,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) SalonCategorie metier,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        return cache60(catalogue.rechercher(ville, q, pageable));
+        return cache60(catalogue.rechercher(ville, q, metier, pageable));
     }
 
     @GetMapping("/salons/{id}")

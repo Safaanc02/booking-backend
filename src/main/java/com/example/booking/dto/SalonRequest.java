@@ -43,7 +43,17 @@ public class SalonRequest {
     @Size(max = 180, message = "Email trop long")
     private String email;
 
+    /** Métier principal : donne au salon sa couleur dans l'interface. */
     private SalonCategorie categorie;
+
+    /**
+     * Autres métiers exercés.
+     *
+     * Facultatif, et le principal y est ajouté d'office côté service : un
+     * appelant qui ne renseigne que la catégorie obtient donc un salon
+     * cohérent, ce qui garde compatible tout ce qui existait avant.
+     */
+    private java.util.Set<SalonCategorie> metiers;
 
     @Min(value = 0, message = "Le délai d'annulation ne peut pas être négatif")
     @Max(value = 168, message = "Le délai d'annulation ne peut pas dépasser une semaine")

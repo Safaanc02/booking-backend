@@ -8,6 +8,7 @@ import com.example.booking.model.Employe;
 import com.example.booking.model.EmployePrestation;
 import com.example.booking.model.Prestation;
 import com.example.booking.model.Salon;
+import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.EmployeRepository;
@@ -52,9 +53,10 @@ public class PublicCatalogService {
      * pagination : une carte sans tarif n'aide personne à choisir, et le
      * contrat d'API l'annonçait déjà sans que rien ne le fournisse.
      */
-    public Page<SalonResponse> rechercher(String ville, String q, Pageable pageable) {
+    public Page<SalonResponse> rechercher(String ville, String q,
+                                         SalonCategorie metier, Pageable pageable) {
         Page<Salon> page = salonRepository.rechercher(
-                SalonStatut.ACTIF, vide(ville), vide(q), pageable);
+                SalonStatut.ACTIF, vide(ville), vide(q), metier, pageable);
 
         List<Long> ids = page.getContent().stream().map(Salon::getId).toList();
         Map<Long, BigDecimal> prix = ids.isEmpty() ? Map.of()
@@ -96,6 +98,7 @@ public class PublicCatalogService {
                 .telephone(salon.getTelephone())
                 .email(salon.getEmail())
                 .categorie(salon.getCategorie() != null ? salon.getCategorie().name() : null)
+                .metiers(SalonService.metiersDe(salon))
                 .noteMoyenne(salon.getNoteMoyenne())
                 .nombreAvis(salon.getNombreAvis())
                 .delaiAnnulationHeures(salon.getDelaiAnnulationHeures())
@@ -133,6 +136,7 @@ public class PublicCatalogService {
                 .adresse(s.getAdresse()).ville(s.getVille()).quartier(s.getQuartier())
                 .telephone(s.getTelephone()).email(s.getEmail())
                 .categorie(s.getCategorie() != null ? s.getCategorie().name() : null)
+                .metiers(SalonService.metiersDe(s))
                 .noteMoyenne(s.getNoteMoyenne())
                 .nombreAvis(s.getNombreAvis())
                 .statut(s.getStatut() != null ? s.getStatut().name() : null)

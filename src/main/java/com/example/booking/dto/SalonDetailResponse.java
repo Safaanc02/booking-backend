@@ -23,7 +23,10 @@ public class SalonDetailResponse {
     private String quartier;
     private String telephone;
     private String email;
+    /** Métier principal : c'est lui qui donne au salon sa couleur. */
     private String categorie;
+    /** Tous les métiers exercés, principal compris. */
+    private java.util.List<String> metiers;
     /** Nulle tant qu'aucun avis n'a été déposé : sans avis n'est pas noté zéro. */
     private BigDecimal noteMoyenne;
     private Integer nombreAvis;

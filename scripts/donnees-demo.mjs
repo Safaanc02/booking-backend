@@ -220,19 +220,26 @@ const darZine = await installer({
   fiche: {
     nom: 'Dar Zine', ville: 'Marrakech', quartier: 'Guéliz',
     adresse: '45 Rue Ibn Batouta', telephone: '0661234567',
-    email: 'contact@darzine.ma', categorie: 'COIFFURE', delaiAnnulationHeures: 12,
-    description: 'Coiffure et couleur au cœur du Guéliz, sur rendez-vous.',
+    email: 'contact@darzine.ma', delaiAnnulationHeures: 12,
+    // Trois métiers : c'est l'institut de quartier ordinaire au Maroc, et le
+    // jeu de démonstration ne le montrait pas. Le premier est le principal,
+    // celui dont le salon porte la couleur.
+    categorie: 'COIFFURE',
+    metiers: ['COIFFURE', 'ONGLERIE', 'ESTHETIQUE'],
+    description: 'Coiffure, ongles et soins au cœur du Guéliz, sur rendez-vous.',
   },
   prestations: [
     { nom: 'Coupe femme', categorie: 'Coupe', prix: 200, dureeMinutes: 45 },
     { nom: 'Brushing', categorie: 'Coiffage', prix: 120, dureeMinutes: 30 },
     { nom: 'Balayage', categorie: 'Couleur', prix: 650, dureeMinutes: 120 },
     { nom: 'Soin à l’huile d’argan', categorie: 'Soin', prix: 250, dureeMinutes: 45 },
+    { nom: 'Manucure simple', categorie: 'Mains', prix: 100, dureeMinutes: 30 },
+    { nom: 'Soin du visage', categorie: 'Soin', prix: 350, dureeMinutes: 60 },
   ],
   equipe: [
     // Sofia a un compte PRATICIEN : elle consulte son planning, rien de plus.
     { prenom: 'Sofia', nom: 'Alami', titre: 'Coloriste',
-      fait: ['Coupe femme', 'Brushing', 'Balayage', 'Soin à l’huile d’argan'],
+      fait: ['Coupe femme', 'Brushing', 'Balayage', 'Soin à l’huile d’argan', 'Soin du visage'],
       compte: { identifiant: 'equipe.sofia', prenom: 'Sofia', nom: 'Alami',
                 email: 'sofia@darzine.ma' } },
     // Youssef ne fait pas la couleur : le moteur ne doit jamais le proposer
@@ -240,7 +247,7 @@ const darZine = await installer({
     // Youssef est GESTIONNAIRE : Leila lui délègue la boutique. Il administre
     // tout sauf la suppression du salon, et sans connaître son mot de passe.
     { prenom: 'Youssef', nom: 'Tazi', titre: 'Coiffeur',
-      fait: ['Coupe femme', 'Brushing'],
+      fait: ['Coupe femme', 'Brushing', 'Manucure simple'],
       role: 'GESTIONNAIRE',
       compte: { identifiant: 'equipe.youssef', prenom: 'Youssef', nom: 'Tazi',
                 email: 'youssef@darzine.ma' } },
@@ -296,7 +303,8 @@ const firdaws = await installer({
   fiche: {
     nom: 'Hammam Al Firdaws', ville: 'Rabat', quartier: 'Agdal',
     adresse: '3 Avenue Fal Ould Oumeir', telephone: '0537778899',
-    email: 'contact@alfirdaws.ma', categorie: 'SPA', delaiAnnulationHeures: 48,
+    email: 'contact@alfirdaws.ma', delaiAnnulationHeures: 48,
+    categorie: 'SPA', metiers: ['SPA', 'ESTHETIQUE'],
   },
   prestations: [
     // Le vocabulaire d'un vrai hammam : c'est ce qu'on y demande, et ce qui

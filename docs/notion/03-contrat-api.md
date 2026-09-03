@@ -17,7 +17,7 @@ Aujourd'hui les routes mélangent français et anglais, et `/api/public/**` est 
 
 | Méthode | Route | Description |
 |---|---|---|
-| `GET` | `/api/public/salons?ville=&categorie=&q=&page=&size=` | Recherche paginée. Renvoie note moyenne et prix minimum |
+| `GET` | `/api/public/salons?ville=&metier=&q=&page=&size=` | Recherche paginée. Renvoie note moyenne, prix minimum et **tous les métiers** exercés. `metier` teste l'ensemble, non la seule catégorie principale |
 | `GET` | `/api/public/salons/{id}` | Fiche complète : prestations groupées par catégorie, équipe, horaires, photos |
 | `GET` | `/api/public/salons/{id}/prestations` | Catalogue seul |
 | `GET` | `/api/public/salons/{id}/employes?prestationId=` | Praticiens sachant faire cette prestation |

@@ -96,7 +96,13 @@ public class SalonService {
                 .delaiAnnulationHeures(request.getDelaiAnnulationHeures() != null
                         ? request.getDelaiAnnulationHeures() : 24)
                 .owner(owner)
+                .metiers(request.getMetiers() != null
+                        ? new java.util.LinkedHashSet<>(request.getMetiers())
+                        : new java.util.LinkedHashSet<>())
                 .build();
+        // Le métier principal fait partie des métiers exercés : sans cela, un
+        // salon serait absent du filtre correspondant à sa propre couleur.
+        salon.normaliserMetiers();
 
         return toResponse(salonRepository.save(salon));
     }
@@ -114,6 +120,14 @@ public class SalonService {
         salon.setTelephone(request.getTelephone());
         salon.setEmail(request.getEmail());
         if (request.getCategorie() != null) salon.setCategorie(request.getCategorie());
+        // Une liste vide efface, une liste absente laisse en place : le
+        // formulaire du back-office envoie toujours la sélection complète,
+        // tandis qu'un appel partiel ne doit pas vider les métiers par
+        // omission.
+        if (request.getMetiers() != null) {
+            salon.setMetiers(new java.util.LinkedHashSet<>(request.getMetiers()));
+        }
+        salon.normaliserMetiers();
         if (request.getDelaiAnnulationHeures() != null) {
             salon.setDelaiAnnulationHeures(request.getDelaiAnnulationHeures());
         }
@@ -179,6 +193,22 @@ public class SalonService {
         }
     }
 
+    /**
+     * Les métiers d'un salon, le principal en tête.
+     *
+     * L'ordre n'est pas cosmétique : c'est celui de l'affichage, et le métier
+     * principal est celui dont le salon porte la couleur. Le voir ailleurs
+     * qu'en premier laisserait croire à une hiérarchie différente.
+     */
+    static java.util.List<String> metiersDe(Salon s) {
+        java.util.LinkedHashSet<String> ordonnes = new java.util.LinkedHashSet<>();
+        if (s.getCategorie() != null) ordonnes.add(s.getCategorie().name());
+        if (s.getMetiers() != null) {
+            s.getMetiers().stream().map(Enum::name).sorted().forEach(ordonnes::add);
+        }
+        return java.util.List.copyOf(ordonnes);
+    }
+
     public SalonResponse toResponse(Salon s) {
         return SalonResponse.builder()
                 .id(s.getId())
@@ -190,6 +220,7 @@ public class SalonService {
                 .telephone(s.getTelephone())
                 .email(s.getEmail())
                 .categorie(s.getCategorie() != null ? s.getCategorie().name() : null)
+                .metiers(metiersDe(s))
                 .noteMoyenne(s.getNoteMoyenne())
                 .nombreAvis(s.getNombreAvis())
                 .statut(s.getStatut() != null ? s.getStatut().name() : null)

@@ -183,11 +183,44 @@ encore en train de défiler — donc, tôt ou tard, à coller l'exemple de la
 documentation. Le script refuse d'ailleurs une adresse dont le nom ne résout
 nulle part.
 
-Il se peut que votre propre réseau ne résolve pas les sous-domaines de tunnel :
-certaines box les filtrent. Vos essayeurs y accéderont normalement ; vous,
-utilisez l'adresse locale que le script affiche. Basculer la machine sur un
-résolveur public (1.1.1.1) règle le point si vous voulez voir la même chose
-qu'eux.
+#### Si l'adresse du tunnel ne résout pas
+
+Certains résolveurs renvoient `NXDOMAIN` sur les sous-domaines de
+`trycloudflare.com` tout en résolvant le domaine racine. Le tunnel fonctionne,
+mais reste invisible depuis ce réseau — `DNS_PROBE_FINISHED_NXDOMAIN` dans le
+navigateur. Les résolveurs publics (1.1.1.1, 8.8.8.8, 9.9.9.9) répondent
+correctement :
+
+```bash
+dig +short @1.1.1.1 votre-adresse.trycloudflare.com   # une IP
+dig +short votre-adresse.trycloudflare.com            # rien du tout
+```
+
+Basculer la machine sur un résolveur public règle le point :
+
+```bash
+networksetup -setdnsservers Wi-Fi 1.1.1.1 1.0.0.1     # rétablir : ... Empty
+```
+
+Si la personne qui essaie l'application se heurte au même mur, le tunnel n'est
+pas la bonne réponse pour elle non plus : voir plus bas.
+
+#### Les autres tunnels ont été essayés
+
+| Service | Résolution | Verdict |
+|---|---|---|
+| `trycloudflare.com` | échoue sur certains résolveurs | **le seul sans page intermédiaire** |
+| `serveo.net` | correcte | page d'avertissement au navigateur en offre gratuite |
+| `localhost.run` | correcte | se dégrade en quelques minutes (503) |
+
+Les deux derniers résolvent là où Cloudflare échoue, mais leur offre gratuite
+interpose une page — ou expire. Un tunnel gratuit reste donc une loterie
+selon le réseau.
+
+**La réponse durable est une adresse à vous**, de deux façons : un petit
+serveur (ci-dessous), ou un tunnel Cloudflare *nommé* sur un domaine que vous
+possédez — gratuit, sans serveur, sous-domaine stable du type
+`essai.votre-domaine.ma`, et résolu partout puisque c'est votre propre DNS.
 
 **Un petit serveur.** Cinq à quinze euros par mois, adresse stable, joignable
 quand votre machine est éteinte. Clonez les deux dépôts, faites pointer un

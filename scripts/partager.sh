@@ -2,12 +2,13 @@
 #
 # Met l'application debout sur une seule adresse, pour la faire essayer.
 #
-#   ./scripts/partager.sh                          # essai local, sur 8090
-#   ./scripts/partager.sh https://essai.exemple.ma # adresse publique
+#   ./scripts/partager.sh --tunnel     # adresse publique, tout compris
+#   ./scripts/partager.sh              # essai local, sur le port 8090
+#   ./scripts/partager.sh https://…    # adresse que vous fournissez
+#   ./scripts/partager.sh --arreter    # tout arrêter
 #
-# Construit les images, démarre la pile, attend qu'elle réponde, puis peuple
-# le jeu de démonstration. À la fin, il affiche l'adresse à transmettre et les
-# comptes pour se connecter.
+# Construit les images, démarre la pile, attend qu'elle réponde, peuple le jeu
+# de démonstration, puis affiche l'adresse à transmettre et les comptes.
 #
 # ⚠️ Ce n'est pas une mise en production. Les comptes de démonstration ont
 #    pour mot de passe leur identifiant, et la boîte aux lettres de test est
@@ -21,20 +22,39 @@ vert()  { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 jaune() { printf '  \033[33m!\033[0m %s\n' "$1"; }
 rouge() { printf '  \033[31m✗\033[0m %s\n' "$1" >&2; }
 
-URL_DEMANDEE="${1:-}"
 FICHIER=partage.env
+COMPOSE="docker compose -f docker-compose.partage.yml"
+PID_TUNNEL=.tunnel.pid
+LOG_TUNNEL=.tunnel.log
+
+# --------------------------------------------------------------------
+# Arrêt
+# --------------------------------------------------------------------
+if [ "${1:-}" = "--arreter" ]; then
+  if [ -f "$PID_TUNNEL" ]; then
+    kill "$(cat "$PID_TUNNEL")" 2>/dev/null && vert 'tunnel fermé' || true
+    rm -f "$PID_TUNNEL"
+  fi
+  set -a; [ -f "./$FICHIER" ] && . "./$FICHIER"; set +a
+  $COMPOSE down && vert 'pile arrêtée'
+  exit 0
+fi
+
+TUNNEL=non
+if [ "${1:-}" = "--tunnel" ]; then TUNNEL=oui; shift; fi
+URL_DEMANDEE="${1:-}"
 
 # --------------------------------------------------------------------
 # Préalables
 # --------------------------------------------------------------------
 docker info >/dev/null 2>&1 || {
-  rouge "Docker ne répond pas. Démarrez Docker Desktop ou OrbStack."
+  rouge 'Docker ne répond pas. Démarrez Docker Desktop ou OrbStack.'
   exit 1
 }
 
 [ -d ../booking-frontend ] || {
-  rouge "../booking-frontend est introuvable."
-  rouge "Les deux dépôts doivent être clonés côte à côte dans le même dossier."
+  rouge '../booking-frontend est introuvable.'
+  rouge 'Les deux dépôts doivent être clonés côte à côte dans le même dossier.'
   exit 1
 }
 
@@ -48,8 +68,7 @@ docker info >/dev/null 2>&1 || {
 if [ ! -f "$FICHIER" ]; then
   bleu '→ Premiers secrets'
   # 40 caractères : la signature des liens d'annulation en exige au moins 32,
-  # et l'application refuse de démarrer en dessous. Un premier jet en
-  # produisait 24, et la pile ne montait pas.
+  # et l'application refuse de démarrer en dessous.
   secret() { openssl rand -base64 48 | tr -d '/+=' | cut -c1-40; }
   cat > "$FICHIER" <<EOF
 # Écrit par scripts/partager.sh. Non suivi par Git.
@@ -66,16 +85,95 @@ EOF
   vert "$FICHIER créé, avec des secrets tirés au sort"
 fi
 
+lire_env() { set -a; . "./$FICHIER"; set +a; }
+lire_env
+PORT="${PORT_PUBLIC:-8090}"
+
+# --------------------------------------------------------------------
+# Tunnel
+#
+# Ouvert ici, et non par une commande à côté : son adresse n'est connue
+# qu'après son démarrage. La donner à la main revient à copier une valeur
+# depuis une sortie encore en train de défiler — et à coller, tôt ou tard,
+# l'exemple de la documentation.
+# --------------------------------------------------------------------
+if [ "$TUNNEL" = oui ]; then
+  command -v cloudflared >/dev/null 2>&1 || {
+    rouge 'cloudflared est introuvable.'
+    rouge 'Installer : HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew install cloudflared'
+    exit 1
+  }
+
+  # Un tunnel déjà ouvert pointe sur l'ancienne adresse : on le remplace.
+  if [ -f "$PID_TUNNEL" ]; then
+    kill "$(cat "$PID_TUNNEL")" 2>/dev/null || true
+    rm -f "$PID_TUNNEL"
+  fi
+
+  bleu '→ Ouverture du tunnel'
+  : > "$LOG_TUNNEL"
+  # nohup et non « & » seul : le tunnel doit survivre à la fin du script,
+  # sinon l'adresse se ferme au moment où on la transmet.
+  nohup cloudflared tunnel --url "http://localhost:$PORT" \
+    >> "$LOG_TUNNEL" 2>&1 &
+  echo $! > "$PID_TUNNEL"
+
+  URL_DEMANDEE=""
+  for _ in $(seq 1 40); do
+    URL_DEMANDEE=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG_TUNNEL" \
+      | head -1 || true)
+    [ -n "$URL_DEMANDEE" ] && break
+    sleep 1
+  done
+
+  [ -n "$URL_DEMANDEE" ] || {
+    rouge "cloudflared n'a pas annoncé d'adresse — voir $LOG_TUNNEL"
+    exit 1
+  }
+  vert "tunnel ouvert sur $URL_DEMANDEE"
+fi
+
 # --------------------------------------------------------------------
 # Adresse publique
 #
 # Elle est inscrite dans les jetons émis par Keycloak et dans les liens des
-# e-mails. En changer impose de recréer les conteneurs, ce que fait « up ».
+# e-mails : une valeur fantaisiste ne se voit qu'au moment où quelqu'un essaie
+# de se connecter, et rien dans les journaux ne l'explique. On refuse donc une
+# adresse dont le nom ne résout pas — le cas s'est produit avec l'exemple de
+# la documentation, collé tel quel.
 # --------------------------------------------------------------------
 if [ -n "$URL_DEMANDEE" ]; then
   URL_DEMANDEE="${URL_DEMANDEE%/}"
-  # sed -i diffère entre BSD et GNU : on réécrit le fichier en Python, qui
-  # se comporte pareil partout.
+
+  HOTE=$(python3 -c 'import sys,urllib.parse as u; print(u.urlparse(sys.argv[1]).hostname or "")' \
+    "$URL_DEMANDEE")
+  [ -n "$HOTE" ] || { rouge "adresse illisible : $URL_DEMANDEE"; exit 1; }
+
+  # Le résolveur du réseau local n'est pas une autorité : certaines box ne
+  # répondent pas sur les sous-domaines de tunnel, alors que le reste du monde
+  # les résout parfaitement. Un premier jet refusait pour cette raison un
+  # tunnel qui fonctionnait. On interroge donc aussi un résolveur public.
+  resout() {
+    python3 -c 'import socket,sys; socket.getaddrinfo(sys.argv[1], None)' "$1" 2>/dev/null && return 0
+    command -v dig >/dev/null 2>&1 || return 1
+    [ -n "$(dig +short @1.1.1.1 "$1" 2>/dev/null)" ]
+  }
+
+  if ! resout "$HOTE"; then
+    if [ "$TUNNEL" = oui ]; then
+      # cloudflared vient d'annoncer cette adresse et sa connexion est
+      # établie : on lui fait davantage confiance qu'au DNS d'ici.
+      jaune "« $HOTE » ne résout pas depuis ce réseau."
+      jaune 'Vos essayeurs y accéderont ; vous, servez-vous de l’adresse locale.'
+    else
+      rouge "le nom « $HOTE » ne résout pas."
+      rouge 'Donnez une adresse réelle, ou lancez : ./scripts/partager.sh --tunnel'
+      exit 1
+    fi
+  fi
+
+  # sed -i diffère entre BSD et GNU : on réécrit le fichier en Python, qui se
+  # comporte pareil partout.
   python3 - "$FICHIER" "$URL_DEMANDEE" <<'PY'
 import re, sys
 chemin, url = sys.argv[1], sys.argv[2]
@@ -85,16 +183,11 @@ contenu = re.sub(r'^URL_PUBLIQUE=.*$', f'URL_PUBLIQUE={url}', contenu, flags=re.
 with open(chemin, 'w') as f:
     f.write(contenu)
 PY
-  vert "adresse publique : $URL_DEMANDEE"
+  lire_env
+  vert "adresse publique : $URL_PUBLIQUE"
 fi
 
-set -a
-# shellcheck disable=SC1090
-. "./$FICHIER"
-set +a
-
-COMPOSE="docker compose -f docker-compose.partage.yml"
-
+# --------------------------------------------------------------------
 bleu '→ Construction des images'
 echo '  La première fois prend quelques minutes : Maven et npm téléchargent tout.'
 $COMPOSE build
@@ -105,11 +198,11 @@ $COMPOSE up -d
 # --------------------------------------------------------------------
 # Attente
 #
-# On interroge le site à travers Caddy, et non les conteneurs un par un : ce
-# qui compte est ce que verra la personne à qui l'on donne l'adresse.
+# On interroge le site à travers le proxy, et non les conteneurs un par un :
+# ce qui compte est ce que verra la personne à qui l'on donne l'adresse.
 # --------------------------------------------------------------------
 bleu '→ Attente'
-LOCALE="http://localhost:${PORT_PUBLIC:-8090}"
+LOCALE="http://localhost:$PORT"
 pret=non
 for _ in $(seq 1 90); do
   site=$(curl -s -o /dev/null -w '%{http_code}' -m 3 "$LOCALE/" || echo 000)
@@ -127,12 +220,22 @@ if [ "$pret" != oui ]; then
 fi
 vert 'site, API et Keycloak répondent'
 
+# L'émetteur inscrit dans les jetons doit être celui que l'API vérifie. C'est
+# la seule incohérence qui ne se manifeste qu'à la première connexion.
+emetteur=$(curl -s -m 5 "$LOCALE/auth/realms/booking-realm/.well-known/openid-configuration" \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["issuer"])' 2>/dev/null || echo '')
+if [ "$emetteur" = "$URL_PUBLIQUE/auth/realms/booking-realm" ]; then
+  vert 'Keycloak annonce la bonne adresse'
+else
+  jaune "Keycloak annonce $emetteur au lieu de $URL_PUBLIQUE/auth/realms/booking-realm"
+fi
+
 # --------------------------------------------------------------------
 # Jeu de démonstration
 #
 # Sans lui, la personne qui reçoit l'adresse tombe sur un site vide et n'a
-# rien à essayer. Le script est idempotent sur les comptes, mais recréerait
-# les salons : on ne le rejoue donc que sur une base neuve.
+# rien à essayer. On ne le rejoue que sur une base neuve : il recréerait les
+# salons.
 # --------------------------------------------------------------------
 salons=$(curl -s -m 5 "$LOCALE/api/public/salons?size=1" \
   | python3 -c 'import sys,json;print(json.load(sys.stdin).get("totalElements",0))' 2>/dev/null || echo 0)
@@ -155,6 +258,9 @@ printf '\n'
 bleu '── À transmettre ──'
 printf '  Application   %s\n' "$URL_PUBLIQUE"
 printf '  Boîte mail    %s/courrier\n' "$URL_PUBLIQUE"
+if [ "$URL_PUBLIQUE" != "$LOCALE" ]; then
+  printf '  Depuis ce Mac %s  (l’adresse publique passe par l’extérieur)\n' "$LOCALE"
+fi
 printf '\n'
 bleu '── Comptes de démonstration (mot de passe = identifiant) ──'
 printf '  client1       réserver, noter, annuler\n'
@@ -165,7 +271,9 @@ bleu '── Console Keycloak ──'
 printf '  %s/auth/admin  —  %s / voir %s\n' "$URL_PUBLIQUE" "${KEYCLOAK_ADMIN:-admin}" "$FICHIER"
 printf '\n'
 jaune "Environnement d'essai : l'adresse vaut mot de passe. Aucune donnée réelle de client."
+if [ "$TUNNEL" = oui ]; then
+  jaune "L'adresse se ferme si vous éteignez ce Mac, et change au prochain tunnel."
+fi
 printf '\n'
-printf '  Arrêter          %s down\n' "$COMPOSE"
-printf '  Tout effacer     %s down -v\n' "$COMPOSE"
+printf '  Tout arrêter     ./scripts/partager.sh --arreter\n'
 printf '  Journaux         %s logs -f api\n' "$COMPOSE"

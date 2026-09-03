@@ -172,14 +172,22 @@ change à chaque lancement et l'application n'est joignable que tant que votre
 machine est allumée.
 
 ```bash
-brew install cloudflared
-cloudflared tunnel --url http://localhost:8090   # affiche une adresse https
-./scripts/partager.sh https://celle-qu-il-affiche.trycloudflare.com
+HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew install cloudflared
+./scripts/partager.sh --tunnel
 ```
 
-L'ordre compte : le tunnel d'abord, pour connaître l'adresse, puis le script —
-cette adresse est inscrite dans les jetons émis par Keycloak et dans les liens
-des e-mails.
+Le script ouvre le tunnel lui-même, lit l'adresse qu'il annonce et configure
+tout avec. C'est délibéré : cette adresse n'est connue qu'après le démarrage du
+tunnel, et la recopier à la main revient à prendre une valeur dans une sortie
+encore en train de défiler — donc, tôt ou tard, à coller l'exemple de la
+documentation. Le script refuse d'ailleurs une adresse dont le nom ne résout
+nulle part.
+
+Il se peut que votre propre réseau ne résolve pas les sous-domaines de tunnel :
+certaines box les filtrent. Vos essayeurs y accéderont normalement ; vous,
+utilisez l'adresse locale que le script affiche. Basculer la machine sur un
+résolveur public (1.1.1.1) règle le point si vous voulez voir la même chose
+qu'eux.
 
 **Un petit serveur.** Cinq à quinze euros par mois, adresse stable, joignable
 quand votre machine est éteinte. Clonez les deux dépôts, faites pointer un
@@ -215,7 +223,7 @@ serveur d'envoi à la place de la boîte de test, et retirer `/courrier` du
 proxy.
 
 ```bash
-docker compose -f docker-compose.partage.yml down     # arrêter
+./scripts/partager.sh --arreter                       # pile et tunnel
 docker compose -f docker-compose.partage.yml down -v  # tout effacer
 docker compose -f docker-compose.partage.yml logs -f api
 ```
@@ -265,6 +273,17 @@ cd booking-frontend
 BASE_URL=http://localhost:8090 API_URL=http://localhost:8090 \
 KC_URL=http://localhost:8090/auth MAILPIT_URL=http://localhost:8090/courrier \
   npm run verifier:referencement
+```
+
+Pour vérifier à travers un tunnel dont le nom n'est pas résolu localement,
+`CHROME_ARGS` passe la route au navigateur — l'API restant interrogée en
+local, puisque c'est l'expérience du navigateur qui est en jeu :
+
+```bash
+H=xxx.trycloudflare.com; IP=$(dig +short @1.1.1.1 $H | head -1)
+CHROME_ARGS="--host-resolver-rules=\"MAP $H $IP\"" BASE_URL=https://$H \
+API_URL=http://localhost:8090 KC_URL=http://localhost:8090/auth \
+MAILPIT_URL=http://localhost:8090/courrier npm run verifier:tunnel
 ```
 
 Les scripts de navigateur supposent la stack démarrée et au moins un salon

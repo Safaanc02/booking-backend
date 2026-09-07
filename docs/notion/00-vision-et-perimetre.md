@@ -31,7 +31,8 @@ Et on n'attend pas du professionnel qu'il s'inscrive. **C'est l'équipe qui inst
 | Brique | Description | MVP ? |
 |---|---|---|
 | Recherche géolocalisée | Par ville, prestation, note, dispo | ✅ |
-| Fiche salon | Photos, prestations, prix, horaires, avis | ✅ |
+| Fiche salon | Prestations, prix, horaires, équipe, avis | ✅ |
+| Photos de salon | Envoi d'images, galerie | 🟡 V1 — une identité visuelle est générée en attendant |
 | Moteur de disponibilité | Calcul des créneaux libres en temps réel | ✅ **cœur du produit** |
 | Tunnel de réservation | Prestation → praticien → créneau → confirmation | ✅ |
 | Compte client | Historique, réservations à venir, annulation | ✅ |
@@ -78,16 +79,36 @@ Sans praticien, on ne peut pas :
 
 **Conséquence** : nouvelle entité `Employe` + table de liaison `EmployePrestation`.
 
+### 3. Un salon exerce **plusieurs métiers**
+
+Ajoutée après coup, pour la même raison que les deux précédentes : une valeur
+unique ne tenait pas. L'institut de quartier fait la coiffure, l'onglerie et
+l'esthétique ; un spa vend du hammam autant que des soins. N'en retenir qu'un
+rendait le salon **introuvable pour deux de ses trois activités**.
+
+**Conséquence** : table `salon_metier`, et `salon.categorie` conservée comme
+métier *principal* — l'identité visuelle du salon a besoin d'une seule couleur.
+
 ## Hypothèses posées
 
 Elles sont à confirmer, mais tout le reste des documents part de là :
 
 - **Marketplace multi-salons**, pas un SaaS mono-salon.
-- Verticales de départ : coiffure, barbier, ongles, esthétique.
-- Marché français, interface en français, fuseau `Europe/Paris`, devise EUR.
-- **Mobile-first** : plus de 70 % du trafic Planity est mobile.
-- Keycloak reste le fournisseur d'identité (déjà en place, réalm `booking-realm`).
+- Verticales de départ : coiffure, barbier, onglerie, esthétique, **hammam & spa**.
+  Un salon en exerce **plusieurs** — l'institut de quartier fait couramment les
+  trois premières.
+- **Marché marocain** : interface en français, fuseau `Africa/Casablanca`, devise
+  **MAD**, numéros au format `+212`, quartier plutôt que code postal.
+- **Mobile-first**, et davantage qu'ailleurs : le trafic marocain est
+  massivement mobile, souvent en 4G. Le poids des pages est un critère, pas un
+  détail.
+- Keycloak reste le fournisseur d'identité (déjà en place, realm `booking-realm`).
 - Lancement sur **une seule ville** pour amorcer la densité.
+
+> Ces trois premières lignes disaient « marché français, fuseau Europe/Paris,
+> devise EUR » — l'énoncé d'origine, avant que le produit ne soit décidé
+> marocain. Le code, lui, était en MAD et en `Africa/Casablanca` depuis le
+> début : c'est le document qui avait pris du retard.
 
 ## Comment on saura que ça marche
 

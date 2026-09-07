@@ -128,9 +128,35 @@ public class PublicController {
             @RequestParam(required = false) String ville,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) SalonCategorie metier,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Integer rayon,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        return cache60(catalogue.rechercher(ville, q, metier, pageable));
+        if ((lat == null) != (lng == null)) {
+            throw new IllegalArgumentException(
+                    "Renseignez lat et lng ensemble : une coordonnée seule ne situe rien");
+        }
+        if (lat == null) {
+            return cache60(catalogue.rechercher(ville, q, metier, pageable));
+        }
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw new IllegalArgumentException("Coordonnées hors du globe");
+        }
+
+        double rayonKm = rayon == null ? RAYON_DEFAUT_KM
+                : Math.min(RAYON_MAX_KM, Math.max(1, rayon));
+        var autour = new PublicCatalogService.Proximite(lat, lng, rayonKm);
+
+        // Pas de cache partagé sur une recherche située : l'URL porte la
+        // position de la personne qui cherche. Un proxy la garderait, et les
+        // journaux d'accès avec. C'est aussi la réponse la moins réutilisable
+        // du service — deux visiteurs ne sont jamais au même endroit.
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore().cachePrivate())
+                .header(EN_TETE_NON_SITUES,
+                        String.valueOf(catalogue.compterNonSitues(ville, q, metier)))
+                .body(catalogue.rechercher(ville, q, metier, autour, pageable));
     }
 
     @GetMapping("/salons/{id}")
@@ -180,6 +206,19 @@ public class PublicController {
                 .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePublic())
                 .body(catalogue.villes());
     }
+
+    /** Rayon retenu quand la recherche n'en précise pas : la taille d'une grande ville. */
+    private static final double RAYON_DEFAUT_KM = 25;
+
+    /**
+     * Rayon maximal. Au-delà, « autour de moi » ne veut plus rien dire : à
+     * 200 km de Casablanca on est à Marrakech, et le classement par distance
+     * remplacerait le choix d'une ville au lieu de l'affiner.
+     */
+    private static final double RAYON_MAX_KM = 100;
+
+    /** Nombre de salons correspondants qu'aucun repère ne situe. */
+    private static final String EN_TETE_NON_SITUES = "X-Salons-Non-Situes";
 
     private <T> ResponseEntity<T> cache60(T corps) {
         return ResponseEntity.ok()

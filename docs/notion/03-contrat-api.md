@@ -17,7 +17,7 @@ Aujourd'hui les routes mélangent français et anglais, et `/api/public/**` est 
 
 | Méthode | Route | Description |
 |---|---|---|
-| `GET` | `/api/public/salons?ville=&metier=&q=&page=&size=` | Recherche paginée. Renvoie note moyenne, prix minimum et **tous les métiers** exercés. `metier` teste l'ensemble, non la seule catégorie principale |
+| `GET` | `/api/public/salons?ville=&metier=&q=&lat=&lng=&rayon=&page=&size=` | Recherche paginée. Renvoie note moyenne, prix minimum et **tous les métiers** exercés. `metier` teste l'ensemble, non la seule catégorie principale. `lat`+`lng` classent du plus proche au plus lointain et ajoutent `distanceKm` à chaque salon — les deux ensemble, sinon `400`. `rayon` en km, défaut 25, plafonné à 100. Une recherche située répond `Cache-Control: no-store` et porte l'en-tête `X-Salons-Non-Situes` |
 | `GET` | `/api/public/salons/{id}` | Fiche complète : prestations groupées par catégorie, équipe, horaires, photos |
 | `GET` | `/api/public/salons/{id}/prestations` | Catalogue seul |
 | `GET` | `/api/public/salons/{id}/employes?prestationId=` | Praticiens sachant faire cette prestation |
@@ -26,6 +26,27 @@ Aujourd'hui les routes mélangent français et anglais, et `/api/public/**` est 
 | `GET` | `/api/public/salons/{id}/avis?page=` | Avis publiés |
 | `GET` | `/api/public/villes?q=` | Autocomplétion de la barre de recherche |
 | `POST` | `/api/public/demandes-demo` | **Prise de contact d'un professionnel.** `metiers` accepte plusieurs valeurs ; `typeEtablissement` seul reste accepté, pour ne pas casser un appel existant. Ne crée aucun compte. Répond toujours `202`, y compris sur un doublon récent — distinguer les deux cas donnerait le moyen de savoir qui s'est manifesté |
+
+**Exemple — salons autour d'un point**
+
+```http
+GET /api/public/salons?lat=33.573&lng=-7.590&rayon=25
+```
+```json
+{
+  "content": [
+    { "id": 3, "nom": "Nails & Co", "quartier": "Gauthier", "distanceKm": 3.4446 },
+    { "id": 2, "nom": "Atlas Barber", "quartier": "Maarif", "distanceKm": 4.1538 }
+  ],
+  "totalElements": 2
+}
+```
+
+La position arrive arrondie au millième de degré — cent mètres. C'est l'interface qui arrondit, avant l'envoi : ce qui ne quitte pas le navigateur ne peut être ni journalisé ni mis en cache. Le `no-store` protège le reste : une URL portant la position de quelqu'un n'a rien à faire dans un cache partagé, et c'est de toute façon la réponse la moins réutilisable du service.
+
+Le tri est fait par la base, en deux temps : un cadre latitude/longitude servi par `idx_salon_coordonnees`, puis la distance exacte (haversine) sur les seules lignes retenues, qui filtre le rayon et donne l'ordre. Le cadre seul ne suffirait pas — c'est un carré circonscrit au cercle, ses coins dépassent le rayon de 41 %.
+
+`X-Salons-Non-Situes` compte les salons qui répondent aux critères mais qu'aucun repère ne situe, donc absents du classement. Il vaut 0 dès que la ville figure dans `repere_geo`. L'interface l'affiche : faire disparaître des salons sans le dire est le défaut que cet en-tête existe pour éviter.
 
 **Exemple — disponibilités**
 

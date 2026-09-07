@@ -4,6 +4,7 @@ import com.example.booking.config.Roles;
 import com.example.booking.dto.ReferencementResponse;
 import com.example.booking.dto.ReferencementSalonRequest;
 import com.example.booking.dto.SalonRequest;
+import com.example.booking.geo.LocalisationService;
 import com.example.booking.model.Salon;
 import com.example.booking.model.User;
 import com.example.booking.model.enums.SalonCategorie;
@@ -39,19 +40,22 @@ public class ReferencementService {
     private final SalonService salonService;
     private final DemandeDemoService demandes;
     private final CurrentUserService utilisateurCourant;
+    private final LocalisationService localisation;
 
     public ReferencementService(ComptesKeycloakService comptes,
                                 UserRepository userRepository,
                                 SalonRepository salonRepository,
                                 SalonService salonService,
                                 DemandeDemoService demandes,
-                                CurrentUserService utilisateurCourant) {
+                                CurrentUserService utilisateurCourant,
+                                LocalisationService localisation) {
         this.comptes = comptes;
         this.userRepository = userRepository;
         this.salonRepository = salonRepository;
         this.salonService = salonService;
         this.demandes = demandes;
         this.utilisateurCourant = utilisateurCourant;
+        this.localisation = localisation;
     }
 
     @Transactional
@@ -85,6 +89,8 @@ public class ReferencementService {
                 .adresse(s.getAdresse())
                 .ville(s.getVille())
                 .quartier(s.getQuartier())
+                .latitude(s.getLatitude())
+                .longitude(s.getLongitude())
                 .telephone(s.getTelephone())
                 .email(s.getEmail())
                 .categorie(s.getCategorie() != null ? s.getCategorie() : SalonCategorie.COIFFURE)
@@ -103,6 +109,12 @@ public class ReferencementService {
                         : new java.util.LinkedHashSet<>())
                 .build());
         salon.normaliserMetiers();
+        // Même raison que pour les métiers ci-dessus : ce service n'emprunte
+        // pas SalonService, donc rien ne situe le salon à sa place. Sans point,
+        // un salon tout juste référencé serait absent des recherches « autour
+        // de moi » — et le conseiller qui vient de l'installer n'aurait aucun
+        // moyen de s'en apercevoir.
+        localisation.situer(salon);
         salonRepository.save(salon);
 
         // 5. La demande de démonstration qui a mené là, si elle existe, est

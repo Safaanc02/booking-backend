@@ -35,6 +35,19 @@ public class SalonResponse {
      * pire que ne rien annoncer.
      */
     private BigDecimal prixMin;
+    /**
+     * Distance depuis le point demandé, en kilomètres.
+     *
+     * Nulle hors d'une recherche par proximité — la fiche d'un salon n'a pas
+     * de distance dans l'absolu.
+     *
+     * À vol d'oiseau, et depuis le point connu du salon : le sien s'il a été
+     * relevé, sinon le centre de son quartier. L'interface le dit ; annoncer
+     * « à 300 m » quand le point est celui du quartier serait une précision
+     * inventée.
+     */
+    private Double distanceKm;
+
     private String statut;
     private Integer delaiAnnulationHeures;
     private Long ownerId;

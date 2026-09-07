@@ -45,13 +45,28 @@ Reservation ──> User (client)
 | `owner` | → User | **un seul champ propriétaire**, pas deux |
 | `nom`, `description` | String | |
 | `adresse`, `ville`, `codePostal` | String | `ville` et `codePostal` **indexés** — base de la recherche |
-| `latitude`, `longitude` | Double | Pour « autour de moi », remplis via géocodage à la création |
+| `latitude`, `longitude` | Double | « Autour de moi ». Relevées sur une carte si le conseiller les saisit, sinon reprises du centre du quartier, à défaut de la ville (voir `repere_geo`). Les deux ou aucune : `chk_salon_point_complet` refuse la moitié d'un point, qui ne situe rien et se propagerait dans un calcul de distance |
 | `telephone`, `email` | String | |
 | `categorie` | Enum | `COIFFURE`, `BARBIER`, `ONGLERIE`, `ESTHETIQUE`, `SPA` |
 | `photos` | List\<String\> | URLs ; la première sert de couverture |
 | `statut` | Enum | `EN_ATTENTE`, `ACTIF`, `SUSPENDU` — **seuls les `ACTIF` sont publics** |
 | `noteMoyenne`, `nombreAvis` | Double / Integer | Dénormalisés, recalculés à chaque avis |
 | `delaiAnnulationHeures` | Integer | Défaut 24 |
+
+### `RepereGeo` → table `repere_geo`
+
+| Champ | Type | Notes |
+|---|---|---|
+| `id` | Long | |
+| `ville` | String | |
+| `quartier` | String | Nul = le repère vaut pour la ville entière |
+| `latitude`, `longitude` | Double | Centre du lieu |
+
+Table de référence, alimentée par la migration V13 : 26 villes et 36 quartiers marocains. Ouvrir une ville demande une ligne, pas une livraison de code.
+
+Elle remplace le géocodage par service externe qui était prévu. Trois raisons : aucune clé d'API ni condition d'utilisation à respecter, aucune dépendance réseau au moment où l'on référence un salon, et une précision suffisante pour l'usage réel — classer les salons d'une ville du plus proche au plus lointain. Un centre de quartier situe à quelques centaines de mètres ; l'interface annonce « au quartier près » et n'affiche jamais mieux que le kilomètre entier, pour ne pas prêter à la donnée une précision qu'elle n'a pas. Le conseiller qui veut la rue près colle les coordonnées relevées sur Google Maps.
+
+La comparaison des libellés passe par la fonction SQL `normaliser_libelle`, `IMMUTABLE` et indexée : « Guéliz », « Gueliz » et « GUÉLIZ » sont le même quartier, et « Centre-ville » rejoint « Centre ville ». Un conseiller qui saisit à la main n'a pas à deviner l'orthographe de référence.
 
 ### `Employe`
 

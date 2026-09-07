@@ -84,6 +84,125 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
             """)
     List<Salon> queJePeuxGerer(@Param("keycloakId") String keycloakId);
 
+
+    /**
+     * Recherche autour d'un point, du plus proche au plus lointain.
+     *
+     * Requête native, et non JPQL : le calcul de distance demande des
+     * fonctions trigonométriques que JPQL ne porte pas, et surtout il doit
+     * s'exécuter dans la base. Trier en Java supposerait de rapatrier tous les
+     * salons du réseau à chaque recherche, et paginerait sur un ensemble déjà
+     * tronqué — la deuxième page ne voudrait plus rien dire.
+     *
+     * Deux temps, pour que cela tienne à l'échelle :
+     *
+     *   1. un cadre latitude/longitude, servi par idx_salon_coordonnees, écarte
+     *      d'emblée l'essentiel des lignes ;
+     *   2. la distance exacte, calculée sur ce qui reste, filtre le rayon et
+     *      donne l'ordre.
+     *
+     * Le cadre seul ne suffirait pas : c'est un carré circonscrit au cercle,
+     * ses coins dépassent le rayon de 41 %. Promettre « à moins de 25 km » et
+     * rendre un salon à 33 serait faux.
+     *
+     * Le LATERAL calcule la distance une fois et la rend disponible au filtre
+     * comme au tri ; l'écrire deux fois inviterait à ne corriger qu'une des
+     * deux. SELECT s.* seul : la projection reste exactement l'entité.
+     *
+     * Le tri secondaire sur l'identifiant n'est pas décoratif — deux salons du
+     * même quartier partagent le centre de ce quartier, donc la distance au
+     * mètre près. Sans second critère, leur ordre relatif varierait d'une page
+     * à l'autre et l'un des deux pourrait n'apparaître sur aucune.
+     *
+     * Statut et métier passent en texte : Hibernate ne lie pas fidèlement un
+     * enum dans une requête native. Les CAST(... AS varchar) sont, eux, ce qui
+     * permet à PostgreSQL de typer un paramètre nul.
+     */
+    @Query(value = """
+            SELECT s.* FROM salon s
+            CROSS JOIN LATERAL (
+                SELECT 2 * 6371.0088 * asin(least(1.0, sqrt(
+                          power(sin(radians(s.latitude - :lat) / 2), 2)
+                        + cos(radians(:lat)) * cos(radians(s.latitude))
+                          * power(sin(radians(s.longitude - :lng) / 2), 2)
+                      ))) AS km
+            ) d
+            WHERE s.statut = CAST(:statut AS varchar)
+              AND (CAST(:ville AS varchar) IS NULL
+                   OR LOWER(s.ville) = LOWER(CAST(:ville AS varchar)))
+              AND s.latitude  BETWEEN :latMin AND :latMax
+              AND s.longitude BETWEEN :lngMin AND :lngMax
+              AND d.km <= :rayonKm
+              AND (CAST(:metier AS varchar) IS NULL OR EXISTS (
+                      SELECT 1 FROM salon_metier m
+                       WHERE m.salon_id = s.id AND m.metier = CAST(:metier AS varchar)))
+              AND (CAST(:q AS varchar) IS NULL
+                   OR LOWER(s.nom)      LIKE LOWER(CONCAT('%', CAST(:q AS varchar), '%'))
+                   OR LOWER(s.adresse)  LIKE LOWER(CONCAT('%', CAST(:q AS varchar), '%'))
+                   OR LOWER(s.quartier) LIKE LOWER(CONCAT('%', CAST(:q AS varchar), '%')))
+            ORDER BY d.km, s.id
+            """,
+            countQuery = """
+            SELECT count(*) FROM salon s
+            CROSS JOIN LATERAL (
+                SELECT 2 * 6371.0088 * asin(least(1.0, sqrt(
+                          power(sin(radians(s.latitude - :lat) / 2), 2)
+                        + cos(radians(:lat)) * cos(radians(s.latitude))
+                          * power(sin(radians(s.longitude - :lng) / 2), 2)
+                      ))) AS km
+            ) d
+            WHERE s.statut = CAST(:statut AS varchar)
+              AND (CAST(:ville AS varchar) IS NULL
+                   OR LOWER(s.ville) = LOWER(CAST(:ville AS varchar)))
+              AND s.latitude  BETWEEN :latMin AND :latMax
+              AND s.longitude BETWEEN :lngMin AND :lngMax
+              AND d.km <= :rayonKm
+              AND (CAST(:metier AS varchar) IS NULL OR EXISTS (
+                      SELECT 1 FROM salon_metier m
+                       WHERE m.salon_id = s.id AND m.metier = CAST(:metier AS varchar)))
+              AND (CAST(:q AS varchar) IS NULL
+                   OR LOWER(s.nom)      LIKE LOWER(CONCAT('%', CAST(:q AS varchar), '%'))
+                   OR LOWER(s.adresse)  LIKE LOWER(CONCAT('%', CAST(:q AS varchar), '%'))
+                   OR LOWER(s.quartier) LIKE LOWER(CONCAT('%', CAST(:q AS varchar), '%')))
+            """,
+            nativeQuery = true)
+    Page<Salon> rechercherAutour(@Param("statut") String statut,
+                                 @Param("ville") String ville,
+                                 @Param("lat") double lat,
+                                 @Param("lng") double lng,
+                                 @Param("latMin") double latMin,
+                                 @Param("latMax") double latMax,
+                                 @Param("lngMin") double lngMin,
+                                 @Param("lngMax") double lngMax,
+                                 @Param("rayonKm") double rayonKm,
+                                 @Param("q") String q,
+                                 @Param("metier") String metier,
+                                 Pageable pageable);
+
+    /**
+     * Salons répondant aux mêmes critères mais dépourvus de coordonnées.
+     *
+     * Ils ne peuvent pas figurer dans un classement par distance. Les taire
+     * serait pourtant les effacer sans un mot : l'interface annonce leur
+     * nombre plutôt que de laisser croire le réseau plus pauvre qu'il n'est.
+     */
+    @Query("""
+            SELECT count(s) FROM Salon s
+            WHERE s.statut = :statut
+              AND s.latitude IS NULL
+              AND (CAST(:ville AS String) IS NULL
+                   OR LOWER(s.ville) = LOWER(CAST(:ville AS String)))
+              AND (:metier IS NULL OR :metier MEMBER OF s.metiers)
+              AND (CAST(:q AS String) IS NULL
+                   OR LOWER(s.nom)      LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
+                   OR LOWER(s.adresse)  LIKE LOWER(CONCAT('%', CAST(:q AS String), '%'))
+                   OR LOWER(s.quartier) LIKE LOWER(CONCAT('%', CAST(:q AS String), '%')))
+            """)
+    long compterNonSitues(@Param("statut") SalonStatut statut,
+                          @Param("ville") String ville,
+                          @Param("q") String q,
+                          @Param("metier") SalonCategorie metier);
+
     List<Salon> findByOwnerIdOrderByNomAsc(Long ownerId);
 
     Page<Salon> findByStatutOrderByCreeLeAsc(SalonStatut statut, Pageable pageable);

@@ -4,6 +4,7 @@ import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.PrestationResponse;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
+import com.example.booking.geo.Distance;
 import com.example.booking.model.Employe;
 import com.example.booking.model.EmployePrestation;
 import com.example.booking.model.Prestation;
@@ -55,8 +56,32 @@ public class PublicCatalogService {
      */
     public Page<SalonResponse> rechercher(String ville, String q,
                                          SalonCategorie metier, Pageable pageable) {
-        Page<Salon> page = salonRepository.rechercher(
-                SalonStatut.ACTIF, vide(ville), vide(q), metier, pageable);
+        return rechercher(ville, q, metier, null, pageable);
+    }
+
+    /**
+     * Recherche publique, éventuellement autour d'un point.
+     *
+     * {@code autour} nul : recherche ordinaire, les salons remontent dans
+     * l'ordre de la base. {@code autour} renseigné : seuls les salons situés
+     * dans le rayon remontent, du plus proche au plus lointain, chacun avec sa
+     * distance.
+     */
+    public Page<SalonResponse> rechercher(String ville, String q, SalonCategorie metier,
+                                          Proximite autour, Pageable pageable) {
+        Page<Salon> page = autour == null
+                ? salonRepository.rechercher(
+                        SalonStatut.ACTIF, vide(ville), vide(q), metier, pageable)
+                : salonRepository.rechercherAutour(
+                        SalonStatut.ACTIF.name(), vide(ville),
+                        autour.latitude(), autour.longitude(),
+                        autour.latitude() - Distance.degresLatitude(autour.rayonKm()),
+                        autour.latitude() + Distance.degresLatitude(autour.rayonKm()),
+                        autour.longitude() - Distance.degresLongitude(autour.rayonKm(), autour.latitude()),
+                        autour.longitude() + Distance.degresLongitude(autour.rayonKm(), autour.latitude()),
+                        autour.rayonKm(), vide(q),
+                        metier != null ? metier.name() : null,
+                        pageable);
 
         List<Long> ids = page.getContent().stream().map(Salon::getId).toList();
         Map<Long, BigDecimal> prix = ids.isEmpty() ? Map.of()
@@ -68,8 +93,32 @@ public class PublicCatalogService {
         return page.map(salon -> {
             SalonResponse reponse = toResponse(salon);
             reponse.setPrixMin(prix.get(salon.getId()));
+            if (autour != null && salon.getLatitude() != null && salon.getLongitude() != null) {
+                // Recalculée ici plutôt que rapportée par la requête : la
+                // projection native reste ainsi exactement l'entité, sans
+                // colonne surnuméraire à mapper. Même formule des deux côtés.
+                reponse.setDistanceKm(Distance.km(
+                        autour.latitude(), autour.longitude(),
+                        salon.getLatitude(), salon.getLongitude()));
+            }
             return reponse;
         });
+    }
+
+    /**
+     * Salons correspondant aux mêmes critères mais qu'aucun repère ne situe.
+     *
+     * Ils sont absents d'un classement par distance, faute de point. Le nombre
+     * est remonté à l'interface pour qu'elle le dise : sans cela, ouvrir une
+     * ville hors du référentiel ferait disparaître ses salons de « autour de
+     * moi » sans que personne s'en aperçoive.
+     */
+    public long compterNonSitues(String ville, String q, SalonCategorie metier) {
+        return salonRepository.compterNonSitues(SalonStatut.ACTIF, vide(ville), vide(q), metier);
+    }
+
+    /** Point de référence et rayon d'une recherche par proximité. */
+    public record Proximite(double latitude, double longitude, double rayonKm) {
     }
 
     public SalonDetailResponse fiche(Long id) {

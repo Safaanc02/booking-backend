@@ -29,6 +29,10 @@ public class CorsConfig {
                         .allowedOrigins(allowedOrigins)
                         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
+                        // Sans cela le navigateur reçoit l'en-tête mais le
+                        // cache au code de la page : en développement, le front
+                        // est sur un autre port que l'API.
+                        .exposedHeaders("X-Salons-Non-Situes")
                         .allowCredentials(true)
                         .maxAge(3600);
             }

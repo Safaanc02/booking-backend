@@ -1,6 +1,9 @@
 package com.example.booking.dto;
 
 import com.example.booking.model.enums.SalonCategorie;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -54,6 +57,29 @@ public class SalonRequest {
      * cohérent, ce qui garde compatible tout ce qui existait avant.
      */
     private java.util.Set<SalonCategorie> metiers;
+
+    /**
+     * Coordonnées relevées sur une carte, facultatives.
+     *
+     * Laissées vides, le salon est placé au centre de son quartier, ou de sa
+     * ville à défaut. C'est assez pour classer les salons d'une ville du plus
+     * proche au plus lointain ; les renseigner ne sert qu'à situer à la rue près.
+     *
+     * Les deux vont ensemble : une latitude seule ne situe rien, et la base
+     * refuse la moitié d'un point.
+     */
+    @DecimalMin(value = "-90",  message = "Latitude invalide")
+    @DecimalMax(value = "90",   message = "Latitude invalide")
+    private Double latitude;
+
+    @DecimalMin(value = "-180", message = "Longitude invalide")
+    @DecimalMax(value = "180",  message = "Longitude invalide")
+    private Double longitude;
+
+    @AssertTrue(message = "Renseignez la latitude et la longitude ensemble, ou aucune des deux")
+    public boolean isPointComplet() {
+        return (latitude == null) == (longitude == null);
+    }
 
     @Min(value = 0, message = "Le délai d'annulation ne peut pas être négatif")
     @Max(value = 168, message = "Le délai d'annulation ne peut pas dépasser une semaine")

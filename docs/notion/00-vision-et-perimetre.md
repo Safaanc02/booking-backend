@@ -30,7 +30,7 @@ Et on n'attend pas du professionnel qu'il s'inscrive. **C'est l'équipe qui inst
 
 | Brique | Description | MVP ? |
 |---|---|---|
-| Recherche géolocalisée | Par ville, prestation, note, dispo | ✅ |
+| Recherche géolocalisée | Par ville, prestation, note, dispo, et **« autour de moi »** — classement par distance depuis la position du navigateur | ✅ |
 | Fiche salon | Prestations, prix, horaires, équipe, avis | ✅ |
 | Photos de salon | Envoi d'images, galerie | 🟡 V1 — une identité visuelle est générée en attendant |
 | Moteur de disponibilité | Calcul des créneaux libres en temps réel | ✅ **cœur du produit** |

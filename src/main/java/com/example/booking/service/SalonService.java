@@ -2,6 +2,7 @@ package com.example.booking.service;
 
 import com.example.booking.dto.SalonRequest;
 import com.example.booking.dto.SalonResponse;
+import com.example.booking.geo.LocalisationService;
 import com.example.booking.model.Salon;
 import com.example.booking.model.User;
 import com.example.booking.model.enums.SalonCategorie;
@@ -24,13 +25,16 @@ public class SalonService {
     private final SalonRepository salonRepository;
     private final CurrentUserService currentUser;
     private final CustomPermissionEvaluator droits;
+    private final LocalisationService localisation;
 
     public SalonService(SalonRepository salonRepository,
                         CurrentUserService currentUser,
-                        CustomPermissionEvaluator droits) {
+                        CustomPermissionEvaluator droits,
+                        LocalisationService localisation) {
         this.salonRepository = salonRepository;
         this.currentUser = currentUser;
         this.droits = droits;
+        this.localisation = localisation;
     }
 
     /* ---------- Lecture ---------- */
@@ -89,6 +93,8 @@ public class SalonService {
                 .adresse(request.getAdresse())
                 .ville(request.getVille())
                 .quartier(request.getQuartier())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .telephone(request.getTelephone())
                 .email(request.getEmail())
                 .categorie(request.getCategorie() != null ? request.getCategorie() : SalonCategorie.COIFFURE)
@@ -103,6 +109,10 @@ public class SalonService {
         // Le métier principal fait partie des métiers exercés : sans cela, un
         // salon serait absent du filtre correspondant à sa propre couleur.
         salon.normaliserMetiers();
+        // Sans point, le salon serait absent des recherches par proximité —
+        // invisible pour le client, sans que le gérant sache pourquoi. Le
+        // centre de son quartier vaut mieux que rien.
+        localisation.situer(salon);
 
         return toResponse(salonRepository.save(salon));
     }
@@ -116,7 +126,33 @@ public class SalonService {
         salon.setDescription(request.getDescription());
         salon.setAdresse(request.getAdresse());
         salon.setVille(request.getVille());
+        // Le lieu est relevé avant d'être écrasé : c'est lui qui décide du sort
+        // des coordonnées, quelques lignes plus bas.
+        boolean lieuChange = !java.util.Objects.equals(salon.getVille(), request.getVille())
+                || !java.util.Objects.equals(salon.getQuartier(), request.getQuartier());
         salon.setQuartier(request.getQuartier());
+        /*
+         * Coordonnées : la même règle que pour les métiers juste en dessous —
+         * fournies, elles remplacent ; absentes, elles restent en place.
+         *
+         * Écraser sans condition serait un piège : cette route est un PUT, et
+         * le premier formulaire d'édition de fiche qui oublierait ce champ
+         * ramènerait tous les salons relevés au centre de leur quartier, sans
+         * erreur ni trace. Un relevé se perd une fois et ne revient pas.
+         *
+         * Sauf si la ville ou le quartier changent : le point d'avant désigne
+         * alors l'ancienne adresse. Le garder serait pire que le perdre — un
+         * salon qui a déménagé apparaîtrait à des kilomètres de là où il est,
+         * et personne ne saurait pourquoi. On l'efface, et le repli le replace
+         * d'après le nouveau quartier.
+         */
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            salon.setLatitude(request.getLatitude());
+            salon.setLongitude(request.getLongitude());
+        } else if (lieuChange) {
+            salon.setLatitude(null);
+            salon.setLongitude(null);
+        }
         salon.setTelephone(request.getTelephone());
         salon.setEmail(request.getEmail());
         if (request.getCategorie() != null) salon.setCategorie(request.getCategorie());
@@ -131,6 +167,7 @@ public class SalonService {
         if (request.getDelaiAnnulationHeures() != null) {
             salon.setDelaiAnnulationHeures(request.getDelaiAnnulationHeures());
         }
+        localisation.situer(salon);
 
         return Optional.of(toResponse(salonRepository.save(salon)));
     }

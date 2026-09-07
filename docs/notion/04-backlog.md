@@ -63,9 +63,13 @@ Le cœur du produit. À traiter avec le plus grand soin de test.
 | RE-02 | Index base sur `ville`, `code_postal`, `statut` | P1 | 1 |
 | RE-03 | Prix minimum + prochaine dispo renvoyés dès la liste de résultats | P1 | 3 |
 | RE-04 | Autocomplétion des villes | P2 | 2 |
-| RE-05 | Géocodage à la création du salon + tri par distance | P2 | 5 |
+| RE-05 | ~~Géocodage à la création du salon + tri par distance~~ — ✅ **fait** | P2 | 5 |
 
 **Total : 16 points**
+
+**RE-05, ce qui a été livré.** Le tri par distance existe, sans service de géocodage. Un salon est situé par ses coordonnées relevées si le conseiller les colle depuis une carte, sinon par le centre de son quartier, sinon par celui de sa ville — les repères viennent de la table `repere_geo` (26 villes, 36 quartiers). Le classement se fait en base : cadre latitude/longitude servi par index, puis haversine exacte sur les lignes retenues. Côté client, un bouton « Salons autour de moi » sous la barre de recherche, la position arrondie à cent mètres avant l'envoi, et une phrase qui dit la précision réelle plutôt que de la laisser deviner.
+
+Renoncer à un service externe évite une clé d'API, des conditions d'utilisation et une dépendance réseau au moment où l'on référence un salon, pour une précision qui suffit à l'usage : classer les salons d'une ville. À revoir le jour où il faudra une carte, ou une distance à la rue près sur tout le réseau.
 
 ## Épique 4 — Frontend client
 

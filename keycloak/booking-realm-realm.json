@@ -22,6 +22,25 @@
   "roles": {
     "realm": [
       {
+        "name": "default-roles-booking-realm",
+        "description": "Rôles reçus d'office à la création d'un compte",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "offline_access",
+            "uma_authorization",
+            "client"
+          ],
+          "client": {
+            "account": [
+              "manage-account",
+              "view-profile"
+            ]
+          }
+        },
+        "clientRole": false
+      },
+      {
         "name": "admin",
         "description": "Administrateur de la plateforme"
       },
@@ -32,6 +51,14 @@
       {
         "name": "client",
         "description": "Client : réserve des prestations"
+      },
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}"
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}"
       }
     ]
   },
@@ -165,5 +192,11 @@
     "starttls": "false",
     "auth": "false"
   },
-  "actionTokenGeneratedByAdminLifespan": 259200
+  "actionTokenGeneratedByAdminLifespan": 259200,
+  "defaultRole": {
+    "name": "default-roles-booking-realm",
+    "description": "Rôles reçus d'office à la création d'un compte",
+    "composite": true,
+    "clientRole": false
+  }
 }

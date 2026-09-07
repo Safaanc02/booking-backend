@@ -48,6 +48,21 @@ Nous. Référence les salons pour le compte des gérants, valide leur mise en li
 
 **Règle d'or du tunnel** : de l'étape 3 à l'étape 8, il ne doit jamais y avoir plus de **4 écrans**. Chaque écran supplémentaire coûte environ 20 % de conversion.
 
+### Le rôle d'un compte client
+
+Le client, lui, **s'inscrit seul** : `registrationAllowed` est vrai, et le formulaire d'inscription de Keycloak fait le compte. C'est la symétrie du parcours pro — le professionnel est installé, le client se sert.
+
+Le rôle `client` est donc un **composite du rôle par défaut du realm** (`default-roles-booking-realm`), et non une attribution faite après coup par le code. Toute personne qui s'inscrit le reçoit d'office.
+
+Cette ligne mérite d'être écrite parce que son absence a coûté un parcours entier. Keycloak ne place d'office que ses propres rôles de gestion de compte — `manage-account`, `view-profile`, `offline_access`, `uma_authorization`. Aucun rôle métier. Un compte créé par le formulaire pouvait donc se connecter, le bandeau affichait son nom et son adresse, et chaque route authentifiée refusait son jeton : « Accès refusé » sur sa propre page de réservations, avec un bouton « Réessayer » qui ne pouvait rien y changer.
+
+Deux conséquences pratiques :
+
+- **Un rôle n'apparaît que dans un jeton émis après son attribution.** Donner `client` à un compte déjà connecté ne change rien tant qu'il n'a pas rouvert sa session. L'écran de refus le dit maintenant, et propose la reconnexion plutôt qu'un nouvel essai.
+- **Les installations déjà en service ne réimportent pas le realm.** `scripts/reparer-roles-client.mjs` ajoute le composite manquant et rattrape les comptes laissés sans rôle métier. Rejouable, et constate avant d'agir.
+
+Vérifié de bout en bout par `npm run verifier:inscription` : un compte neuf est créé à chaque exécution par le vrai formulaire, et la suite exige qu'il lise ses réservations — page, contenu du jeton, et réponse de l'API, trois questions distinctes.
+
 ## Parcours pro — du démarchage à la première réservation
 
 Un professionnel ne s'inscrit pas. **L'équipe installe son salon pour lui**, puis lui remet les clés. Ce n'est pas une limitation technique : le paramétrage d'un catalogue — trente prestations, leurs durées, qui fait quoi — est l'étape où l'on perd la quasi-totalité des gérants laissés seuls. La faire à leur place est le produit autant que le logiciel.

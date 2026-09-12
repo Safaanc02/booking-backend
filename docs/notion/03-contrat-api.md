@@ -25,6 +25,7 @@ Aujourd'hui les routes mélangent français et anglais, et `/api/public/**` est 
 | `GET` | `/api/public/salons/{id}/disponibilites?prestationId=&date=&employeId=` | **La route la plus appelée du produit** |
 | `GET` | `/api/public/salons/{id}/prochaines-dispos?prestationId=&jours=7` | Les 7 prochains jours ayant au moins un créneau — évite au client de cliquer jour par jour |
 | `GET` | `/api/public/salons/{id}/avis?page=` | Avis publiés |
+| `GET` | `/api/public/photos/{fichier}` | Sert une photo de salon. Type servi d'après la signature constatée au dépôt, jamais d'après le type déclaré ; `X-Content-Type-Options: nosniff`. Cache d'un an et immuable — le nom est tiré au sort à l'écriture, une photo modifiée est une photo nouvelle |
 | `GET` | `/api/public/villes?q=` | Autocomplétion de la barre de recherche |
 | `POST` | `/api/public/demandes-demo` | **Prise de contact d'un professionnel.** `metiers` accepte plusieurs valeurs ; `typeEtablissement` seul reste accepté, pour ne pas casser un appel existant. Ne crée aucun compte. Répond toujours `202`, y compris sur un doublon récent — distinguer les deux cas donnerait le moyen de savoir qui s'est manifesté |
 

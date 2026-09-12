@@ -68,6 +68,23 @@ Elle remplace le géocodage par service externe qui était prévu. Trois raisons
 
 La comparaison des libellés passe par la fonction SQL `normaliser_libelle`, `IMMUTABLE` et indexée : « Guéliz », « Gueliz » et « GUÉLIZ » sont le même quartier, et « Centre-ville » rejoint « Centre ville ». Un conseiller qui saisit à la main n'a pas à deviner l'orthographe de référence.
 
+### `PhotoSalon` → table `photo_salon`
+
+| Champ | Type | Notes |
+|---|---|---|
+| `id` | Long | |
+| `salon` | → Salon | `ON DELETE CASCADE` |
+| `fichier` | String | Nom **engendré par le serveur**, unique. Jamais celui envoyé : un nom d'origine peut porter des séparateurs de chemin ou celui d'un fichier déjà présent |
+| `typeMime` | String | `image/jpeg`, `image/png` ou `image/webp`, contraint en base |
+| `taille` | Integer | 5 Mo au plus, contraint en base |
+| `ordre` | Integer | Rang d'affichage. La première sert de couverture partout |
+
+**Le binaire n'est pas en base.** La table décrit la photo, le fichier vit sur le disque : PostgreSQL n'est pas un serveur de fichiers, et une image en `bytea` alourdit chaque sauvegarde, chaque réplication et chaque requête qui oublie de l'exclure.
+
+Le format est reconnu **aux premiers octets**, pas au type déclaré dans la requête — celui-ci se choisit librement. Un fichier annoncé `image/png` peut être n'importe quoi, et le servir ensuite sous ce type revient à laisser un tiers décider de ce que le navigateur d'un visiteur va interpréter. Pas de SVG non plus : c'est un document XML, il porte des scripts et s'exécute dans le contexte du domaine qui le sert.
+
+⚠️ **Le répertoire des photos doit être persistant.** Sur un hébergement dont le disque est éphémère — la plupart des offres gérées —, les photos disparaîtraient à chaque redéploiement, sans erreur, ne laissant que des images cassées sur les fiches. Le jour où il faudra un stockage objet, c'est `StockagePhotos` qu'on remplacera, et elle seule : le reste du code ne connaît qu'un nom de fichier. La pile partagée monte un volume Docker, et les scripts de sauvegarde et de restauration emportent ce répertoire.
+
 ### `Employe`
 
 | Champ | Type | Notes |

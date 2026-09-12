@@ -115,6 +115,8 @@ services:
 
   api:
     build: .
+    volumes:
+      - photos_salons:/var/lib/booking/photos
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/beauty_booking
       DB_USER: booking_user
@@ -138,6 +140,10 @@ services:
       CORS_ORIGINS: ${URL_PUBLIQUE}
       # Les liens d'annulation sont signés : un secret connu se contrefait.
       ANNULATION_SECRET: ${ANNULATION_SECRET:?definir ANNULATION_SECRET dans partage.env}
+      # Les photos vivent sur un volume, pas dans la couche du conteneur : sans
+      # lui, elles disparaîtraient à chaque reconstruction de l'image, sans
+      # erreur, ne laissant que des cadres vides sur les fiches.
+      PHOTOS_REPERTOIRE: /var/lib/booking/photos
       # Le schéma d'API décrit toute la surface d'attaque. Fermé.
       OPENAPI_ACTIF: "false"
       # Aucun serveur par défaut.
@@ -206,3 +212,4 @@ services:
 
 volumes:
   donnees_postgres:
+  photos_salons:

@@ -7,6 +7,7 @@ import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.geo.Distance;
 import com.example.booking.model.Employe;
+import com.example.booking.photos.PhotoService;
 import com.example.booking.model.EmployePrestation;
 import com.example.booking.model.Prestation;
 import com.example.booking.model.Salon;
@@ -40,6 +41,7 @@ public class PublicCatalogService {
     private final EmployeRepository employeRepository;
     private final EmployePrestationRepository employePrestationRepository;
     private final PrestationRepository prestationRepository;
+    private final PhotoService photoService;
     /**
      * Le moteur de disponibilité, pour annoncer un premier créneau dès la
      * liste. Sens unique : le moteur ignore le catalogue, il n'y a pas de
@@ -51,12 +53,14 @@ public class PublicCatalogService {
                                 EmployeRepository employeRepository,
                                 EmployePrestationRepository employePrestationRepository,
                                 PrestationRepository prestationRepository,
-                                DisponibiliteService disponibilites) {
+                                DisponibiliteService disponibilites,
+                                PhotoService photoService) {
         this.salonRepository = salonRepository;
         this.employeRepository = employeRepository;
         this.employePrestationRepository = employePrestationRepository;
         this.prestationRepository = prestationRepository;
         this.disponibilites = disponibilites;
+        this.photoService = photoService;
     }
 
     /**
@@ -102,9 +106,15 @@ public class PublicCatalogService {
                                 ligne -> (Long) ligne[0],
                                 ligne -> (BigDecimal) ligne[1]));
 
+        // Les couvertures en un appel pour toute la page, comme les prix : vingt
+        // cartes, vingt requêtes pour une image chacune, sur la route la plus
+        // consultée du produit.
+        Map<Long, List<String>> photos = photoService.parSalon(ids);
+
         return page.map(salon -> {
             SalonResponse reponse = toResponse(salon);
             reponse.setPrixMin(prix.get(salon.getId()));
+            reponse.setPhotos(urls(photos.getOrDefault(salon.getId(), List.of())));
             if (autour != null && salon.getLatitude() != null && salon.getLongitude() != null) {
                 // Recalculée ici plutôt que rapportée par la requête : la
                 // projection native reste ainsi exactement l'entité, sans
@@ -209,6 +219,8 @@ public class PublicCatalogService {
                 .email(salon.getEmail())
                 .categorie(salon.getCategorie() != null ? salon.getCategorie().name() : null)
                 .metiers(SalonService.metiersDe(salon))
+                .photos(urls(photoService.duSalon(id).stream()
+                        .map(com.example.booking.model.PhotoSalon::getFichier).toList()))
                 .noteMoyenne(salon.getNoteMoyenne())
                 .nombreAvis(salon.getNombreAvis())
                 .delaiAnnulationHeures(salon.getDelaiAnnulationHeures())
@@ -232,6 +244,18 @@ public class PublicCatalogService {
 
     public List<String> villes() {
         return salonRepository.villesDistinctes(SalonStatut.ACTIF);
+    }
+
+    /**
+     * Noms de fichiers vers adresses servables.
+     *
+     * Relatives, et non absolues. Le site tourne derrière une seule adresse en
+     * production, plusieurs en développement, et un tunnel change la sienne à
+     * chaque ouverture — une adresse absolue enregistrée ou mise en cache
+     * pointerait tôt ou tard vers un hôte qui n'existe plus.
+     */
+    private static List<String> urls(List<String> fichiers) {
+        return fichiers.stream().map(f -> "/api/public/photos/" + f).toList();
     }
 
     /* ---------- Mappers ---------- */

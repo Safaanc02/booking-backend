@@ -27,6 +27,10 @@ public class SalonDetailResponse {
     private String categorie;
     /** Tous les métiers exercés, principal compris. */
     private java.util.List<String> metiers;
+
+    /** Adresses des photos, la première servant de couverture. */
+    @Builder.Default
+    private java.util.List<String> photos = java.util.List.of();
     /** Nulle tant qu'aucun avis n'a été déposé : sans avis n'est pas noté zéro. */
     private BigDecimal noteMoyenne;
     private Integer nombreAvis;

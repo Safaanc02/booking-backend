@@ -57,9 +57,33 @@ for base in beauty_booking keycloak; do
   fi
 done
 
+# Les photos, qui ne sont pas en base.
+#
+# Sauvegarder les deux bases sans elles donnerait une restauration où chaque
+# fiche pointe une image absente : les lignes reviendraient, les fichiers non.
+# Et cela ne se verrait qu'en regardant le site, pas en lisant un journal.
+#
+# Le conteneur de l'API porte le volume ; on lit dedans plutôt que de chercher
+# le volume sur l'hôte, dont le chemin dépend du moteur Docker installé.
+CONTENEUR_API="${CONTENEUR_API:-booking-partage-api-1}"
+REPERTOIRE_PHOTOS="${REPERTOIRE_PHOTOS:-/var/lib/booking/photos}"
+
+if docker exec "$CONTENEUR_API" test -d "$REPERTOIRE_PHOTOS" 2>/dev/null; then
+  if docker exec "$CONTENEUR_API" tar -cf - -C "$REPERTOIRE_PHOTOS" . > "$CIBLE/photos.tar" 2>/dev/null; then
+    nombre=$(docker exec "$CONTENEUR_API" sh -c "ls -1 '$REPERTOIRE_PHOTOS' | wc -l" 2>/dev/null | tr -d ' ')
+    vert "photos — ${nombre:-0} fichier(s), $(du -h "$CIBLE/photos.tar" | cut -f1)"
+  else
+    rouge 'échec sur les photos'
+    rm -f "$CIBLE/photos.tar"
+    exit 1
+  fi
+else
+  jaune "aucun répertoire de photos dans $CONTENEUR_API — rien à sauvegarder"
+fi
+
 # La somme de contrôle détecte une copie tronquée, ce qu'une taille de
 # fichier ne fait pas toujours.
-( cd "$CIBLE" && shasum -a 256 ./*.dump > sommes.sha256 )
+( cd "$CIBLE" && shasum -a 256 ./*.dump ./photos.tar 2>/dev/null > sommes.sha256 )
 vert 'sommes de contrôle écrites'
 
 # Le realm est le pendant Keycloak du schéma : sans lui, restaurer la base

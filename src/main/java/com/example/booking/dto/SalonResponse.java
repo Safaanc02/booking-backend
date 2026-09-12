@@ -62,6 +62,16 @@ public class SalonResponse {
      */
     private Double distanceKm;
 
+    /**
+     * Adresses des photos, la première servant de couverture.
+     *
+     * Vide tant que le salon n'en a pas déposé : l'interface retombe alors sur
+     * l'identité visuelle engendrée depuis son nom, ce qui vaut bien mieux
+     * qu'un cadre gris pour un salon qu'on vient d'installer.
+     */
+    @Builder.Default
+    private java.util.List<String> photos = java.util.List.of();
+
     private String statut;
     private Integer delaiAnnulationHeures;
     private Long ownerId;

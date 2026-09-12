@@ -61,8 +61,8 @@ Le cœur du produit. À traiter avec le plus grand soin de test.
 |---|---|:-:|:-:|
 | RE-01 | `GET /api/public/salons` avec filtres ville / catégorie / texte | P1 | 5 |
 | RE-02 | Index base sur `ville`, `code_postal`, `statut` | P1 | 1 |
-| RE-03 | Prix minimum + prochaine dispo renvoyés dès la liste de résultats | P1 | 3 |
-| RE-04 | Autocomplétion des villes | P2 | 2 |
+| RE-03 | ~~Prix minimum + prochaine dispo renvoyés dès la liste de résultats~~ — ✅ **fait** | P1 | 3 |
+| RE-04 | ~~Villes réellement couvertes dans la barre de recherche~~ — ✅ **fait** | P2 | 2 |
 | RE-05 | ~~Géocodage à la création du salon + tri par distance~~ — ✅ **fait** | P2 | 5 |
 
 **Total : 16 points**
@@ -81,7 +81,7 @@ Tous les fichiers de `booking-frontend/src/pages` et `components` sont **actuell
 | FE-02 | Refonte de l'auth : Keycloak en `check-sso` (pas `login-required`) pour laisser le site public accessible | P0 | 3 |
 | FE-03 | `Home` — barre de recherche, catégories, salons en avant | P1 | 5 |
 | FE-04 | `Results` — liste, filtres, pagination | P1 | 5 |
-| FE-05 | `SalonDetails` — photos, prestations par catégorie, équipe, avis | P1 | 8 |
+| FE-05 | ~~`SalonDetails` — photos, prestations par catégorie, équipe, avis~~ — ✅ **fait** | P1 | 8 |
 | FE-06 | `Reservation` — stepper prestation → praticien → créneau → confirmation | P1 | 8 |
 | FE-07 | `CalendarSlots` — sélecteur de jour + grille de créneaux | P1 | 5 |
 | FE-08 | `Account` — réservations à venir / passées, annulation | P1 | 5 |
@@ -100,7 +100,7 @@ Tous les fichiers de `booking-frontend/src/pages` et `components` sont **actuell
 | PR-03 | Gestion des prestations | P1 | 5 |
 | PR-04 | Gestion de l'équipe + affectation des prestations | P1 | 5 |
 | PR-05 | Édition des horaires hebdomadaires | P1 | 5 |
-| PR-06 | Congés et fermetures exceptionnelles | P1 | 3 |
+| PR-06 | ~~Congés et fermetures exceptionnelles~~ — ✅ **fait** | P1 | 3 |
 | PR-07 | Saisie manuelle d'une réservation prise par téléphone | P1 | 3 |
 | PR-08 | Marquer une résa `HONOREE` / `ABSENT` | P1 | 2 |
 | PR-09 | Déplacement d'un rendez-vous en glisser-déposer | P2 | 5 |
@@ -116,7 +116,7 @@ Tous les fichiers de `booking-frontend/src/pages` et `components` sont **actuell
 | NO-02 | Confirmation de réservation au client et au salon | P2 | 3 |
 | NO-03 | Rappel J-1 planifié | P2 | 5 |
 | NO-04 | Annulation en un clic depuis l'email (lien signé) | P2 | 3 |
-| NO-05 | Email de demande d'avis à J+1 | P2 | 3 |
+| NO-05 | ~~Email de demande d'avis à J+1~~ — ✅ **fait** | P2 | 3 |
 | NO-06 | SMS de rappel (Twilio / OVH) | P3 | 5 |
 
 **Total : 24 points**
@@ -128,7 +128,7 @@ Tous les fichiers de `booking-frontend/src/pages` et `components` sont **actuell
 | AV-01 | Entité `Avis` + dépôt limité aux résas `HONOREE` | P2 | 5 |
 | AV-02 | Affichage sur la fiche salon + note moyenne dénormalisée | P2 | 3 |
 | AV-03 | Droit de réponse du salon | P2 | 3 |
-| AV-04 | Modération admin | P2 | 3 |
+| AV-04 | ~~Modération admin~~ — ✅ **fait** | P2 | 3 |
 
 **Total : 14 points**
 

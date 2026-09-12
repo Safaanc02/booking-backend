@@ -99,6 +99,28 @@ for base in beauty_booking keycloak; do
   fi
 done
 
+# Les photos, qui ne sont pas en base.
+#
+# Restaurer les bases sans elles rendrait des fiches dont chaque image est
+# absente : les lignes reviendraient, les fichiers non. Et cela ne se verrait
+# qu'en regardant le site.
+CONTENEUR_API="${CONTENEUR_API:-booking-partage-api-1}"
+REPERTOIRE_PHOTOS="${REPERTOIRE_PHOTOS:-/var/lib/booking/photos}"
+
+if [ -f "$SOURCE/photos.tar" ]; then
+  # Le conteneur doit tourner pour qu'on écrive dans son volume.
+  $COMPOSE up -d api >/dev/null 2>&1
+  if docker exec -i "$CONTENEUR_API" sh -c "mkdir -p '$REPERTOIRE_PHOTOS' && tar -xf - -C '$REPERTOIRE_PHOTOS'" < "$SOURCE/photos.tar" 2>/dev/null; then
+    nombre=$(docker exec "$CONTENEUR_API" sh -c "ls -1 '$REPERTOIRE_PHOTOS' | wc -l" 2>/dev/null | tr -d ' ')
+    vert "photos restaurées (${nombre:-0} fichier(s))"
+  else
+    rouge 'échec de la restauration des photos'
+    exit 1
+  fi
+else
+  jaune 'aucune photo dans cette sauvegarde'
+fi
+
 printf '\033[36m→ Redémarrage\033[0m\n'
 $COMPOSE up -d >/dev/null 2>&1
 vert 'services relancés'

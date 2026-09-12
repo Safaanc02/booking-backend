@@ -1,6 +1,7 @@
 package com.example.booking.controller;
 
 import com.example.booking.dto.AbsenceRequest;
+import com.example.booking.dto.AbsenceResponse;
 import com.example.booking.dto.AgendaResponse;
 import com.example.booking.dto.ReservationProRequest;
 import com.example.booking.dto.EmployeRequest;
@@ -172,6 +173,21 @@ public class ProController {
     }
 
     /* ---------- Absences ---------- */
+
+    /**
+     * Congés et fermetures du salon.
+     *
+     * La lecture manquait : on pouvait créer une absence et la supprimer, mais
+     * pas la retrouver. Un gérant qui fermait une semaine n'avait aucun moyen
+     * de vérifier ce qu'il avait saisi, ni de corriger une date — sauf à
+     * deviner l'identifiant. Écrire sans pouvoir relire n'est pas une
+     * fonctionnalité.
+     */
+    @GetMapping("/salons/{salonId}/absences")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
+    public ResponseEntity<List<AbsenceResponse>> absences(@PathVariable Long salonId) {
+        return ResponseEntity.ok(equipe.absencesDuSalon(salonId));
+    }
 
     @PostMapping("/absences")
     @PreAuthorize("hasRole('ADMIN') "

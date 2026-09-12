@@ -1,6 +1,7 @@
 package com.example.booking.service;
 
 import com.example.booking.dto.AbsenceRequest;
+import com.example.booking.dto.AbsenceResponse;
 import com.example.booking.dto.EmployeRequest;
 import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.HoraireRequest;
@@ -20,10 +21,14 @@ import com.example.booking.repository.HoraireOuvertureRepository;
 import com.example.booking.repository.PrestationRepository;
 import com.example.booking.repository.SalonRepository;
 import com.example.booking.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.ZoneId;
+import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -39,6 +44,8 @@ public class EquipeService {
     private final SalonRepository salonRepository;
     private final PrestationRepository prestationRepository;
     private final UserRepository userRepository;
+    /** Même fuseau que le moteur de disponibilité : « aujourd'hui » doit désigner le même jour. */
+    private final ZoneId zone;
 
     public EquipeService(EmployeRepository employeRepository,
                          EmployePrestationRepository employePrestationRepository,
@@ -46,7 +53,8 @@ public class EquipeService {
                          AbsenceRepository absenceRepository,
                          SalonRepository salonRepository,
                          PrestationRepository prestationRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         @Value("${app.fuseau:Africa/Casablanca}") String fuseau) {
         this.employeRepository = employeRepository;
         this.employePrestationRepository = employePrestationRepository;
         this.horaireRepository = horaireRepository;
@@ -54,6 +62,7 @@ public class EquipeService {
         this.salonRepository = salonRepository;
         this.prestationRepository = prestationRepository;
         this.userRepository = userRepository;
+        this.zone = ZoneId.of(fuseau);
     }
 
     /* ---------- Employés ---------- */
@@ -180,6 +189,28 @@ public class EquipeService {
     }
 
     /* ---------- Absences ---------- */
+
+    /**
+     * Congés et fermetures d'un salon, du plus proche au plus lointain.
+     *
+     * Depuis le début du jour courant, et non depuis l'instant présent : une
+     * fermeture qui s'achève ce matin doit rester à l'écran jusqu'au soir.
+     * Elle explique les créneaux manquants de la journée, et c'est aussi celle
+     * qu'on corrige le plus souvent.
+     */
+    @Transactional(readOnly = true)
+    public List<AbsenceResponse> absencesDuSalon(Long salonId) {
+        Instant debutDuJour = LocalDate.now(zone).atStartOfDay(zone).toInstant();
+        return absenceRepository.aVenirPourSalon(salonId, debutDuJour).stream()
+                .map(a -> new AbsenceResponse(
+                        a.getId(),
+                        a.getEmploye() != null ? a.getEmploye().getId() : null,
+                        a.getEmploye() != null
+                                ? (a.getEmploye().getPrenom() + " " + a.getEmploye().getNom()).trim()
+                                : null,
+                        a.getDebut(), a.getFin(), a.getMotif()))
+                .toList();
+    }
 
     public Long creerAbsence(AbsenceRequest req) {
         boolean cibleUnique = (req.getEmployeId() == null) ^ (req.getSalonId() == null);

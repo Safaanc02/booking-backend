@@ -36,6 +36,20 @@ public class SalonResponse {
      */
     private BigDecimal prixMin;
     /**
+     * Point du salon, tel qu'il sert au classement par distance.
+     *
+     * Rendu parce que le gérant doit pouvoir le relire et le corriger depuis sa
+     * fiche : l'API acceptait de l'écrire depuis le début, mais ne le rendait
+     * pas, si bien qu'aucun formulaire ne pouvait le pré-remplir — on ne
+     * pouvait que l'écraser à l'aveugle.
+     *
+     * Publier la position d'un commerce n'expose rien : c'est une adresse, et
+     * elle est déjà écrite en toutes lettres à côté.
+     */
+    private Double latitude;
+    private Double longitude;
+
+    /**
      * Distance depuis le point demandé, en kilomètres.
      *
      * Nulle hors d'une recherche par proximité — la fiche d'un salon n'a pas

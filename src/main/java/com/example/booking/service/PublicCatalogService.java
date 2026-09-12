@@ -179,19 +179,16 @@ public class PublicCatalogService {
         return (s == null || s.isBlank()) ? null : s.trim();
     }
 
+    /**
+     * Délègue au mapper de SalonService, qui est le seul.
+     *
+     * Ce service en avait une copie mot pour mot. Deux mappers pour un même
+     * objet, c'est un champ ajouté d'un côté et oublié de l'autre, et une API
+     * qui répond différemment selon la route empruntée — sans erreur, sans
+     * trace. C'est arrivé trois fois.
+     */
     private SalonResponse toResponse(Salon s) {
-        return SalonResponse.builder()
-                .id(s.getId()).nom(s.getNom()).description(s.getDescription())
-                .adresse(s.getAdresse()).ville(s.getVille()).quartier(s.getQuartier())
-                .telephone(s.getTelephone()).email(s.getEmail())
-                .categorie(s.getCategorie() != null ? s.getCategorie().name() : null)
-                .metiers(SalonService.metiersDe(s))
-                .noteMoyenne(s.getNoteMoyenne())
-                .nombreAvis(s.getNombreAvis())
-                .statut(s.getStatut() != null ? s.getStatut().name() : null)
-                .delaiAnnulationHeures(s.getDelaiAnnulationHeures())
-                .ownerId(s.getOwner() != null ? s.getOwner().getId() : null)
-                .build();
+        return SalonService.toResponse(s);
     }
 
     private PrestationResponse toResponse(Prestation p) {

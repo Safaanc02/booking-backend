@@ -46,7 +46,7 @@ public class SalonService {
 
     @Transactional(readOnly = true)
     public Page<SalonResponse> getAllSalons(Pageable pageable) {
-        return salonRepository.findAll(pageable).map(this::toResponse);
+        return salonRepository.findAll(pageable).map(SalonService::toResponse);
     }
 
     /**
@@ -181,7 +181,7 @@ public class SalonService {
 
     @Transactional(readOnly = true)
     public Page<SalonResponse> parStatut(SalonStatut statut, Pageable pageable) {
-        return salonRepository.findByStatutOrderByCreeLeAsc(statut, pageable).map(this::toResponse);
+        return salonRepository.findByStatutOrderByCreeLeAsc(statut, pageable).map(SalonService::toResponse);
     }
 
     public void deleteSalon(Long id) {
@@ -246,7 +246,20 @@ public class SalonService {
         return java.util.List.copyOf(ordonnes);
     }
 
-    public SalonResponse toResponse(Salon s) {
+    /**
+     * Salon en réponse d'API. **Le seul mapper** — n'en réécrivez pas un second.
+     *
+     * Il en existait deux, identiques à la virgule près, ici et dans
+     * PublicCatalogService. Chaque champ ajouté devait l'être aux deux, et
+     * l'oubli ne se voyait pas : le champ sortait nul d'un côté, rempli de
+     * l'autre, selon la route empruntée. Trois défauts en sont nés — les
+     * métiers absents du catalogue public, les coordonnées jamais rendues, et
+     * le référencement qui construisait son salon à part.
+     *
+     * Statique parce qu'il ne dépend d'aucun état : c'est ce qui permet au
+     * service public de l'appeler sans dépendre de celui-ci.
+     */
+    public static SalonResponse toResponse(Salon s) {
         return SalonResponse.builder()
                 .id(s.getId())
                 .nom(s.getNom())
@@ -254,6 +267,8 @@ public class SalonService {
                 .adresse(s.getAdresse())
                 .ville(s.getVille())
                 .quartier(s.getQuartier())
+                .latitude(s.getLatitude())
+                .longitude(s.getLongitude())
                 .telephone(s.getTelephone())
                 .email(s.getEmail())
                 .categorie(s.getCategorie() != null ? s.getCategorie().name() : null)

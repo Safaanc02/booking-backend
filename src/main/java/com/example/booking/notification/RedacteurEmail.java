@@ -119,6 +119,37 @@ public class RedacteurEmail {
         return message(r.getClient().getEmail(), sujet, ctx, texte);
     }
 
+    /**
+     * Demande d'avis, le lendemain d'un rendez-vous honoré.
+     *
+     * Le lien mène à la page du compte, où l'avis se dépose : le dépôt exige
+     * d'être connecté, parce qu'un avis anonyme sur un commerce n'engage
+     * personne et se fabrique en série. C'est la différence avec l'annulation,
+     * qui passe par un jeton signé — là, tout obstacle fait perdre un créneau ;
+     * ici, il fait perdre un avis, ce qui est moins grave qu'un faux.
+     */
+    public CanalNotification.Message demandeAvis(Reservation r) {
+        Context ctx = contexteCommun(r);
+        ctx.setVariable("contenu", "email/demande-avis-client :: contenu");
+        ctx.setVariable("lienAvis", urlPublique + "/compte?avis=" + r.getId());
+
+        String sujet = "Comment s'est passée votre visite chez " + r.getSalon().getNom() + " ?";
+        String texte = """
+                Bonjour %s,
+
+                Votre rendez-vous chez %s pour « %s » est passé.
+
+                Un mot sur votre visite aiderait les prochains à choisir :
+                %s
+
+                Deux minutes, une note et quelques mots. Le salon pourra vous répondre.
+                """.formatted(
+                nomClient(r), r.getSalon().getNom(), r.getNomPrestationFige(),
+                urlPublique + "/compte?avis=" + r.getId());
+
+        return message(r.getClient().getEmail(), sujet, ctx, texte);
+    }
+
     /* ---------- Interne ---------- */
 
     private Context contexteCommun(Reservation r) {

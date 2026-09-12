@@ -1,0 +1,47 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<body>
+<div th:fragment="contenu">
+  <h1 style="margin:0 0 8px;font-size:20px;">Comment ça s'est passé ?</h1>
+  <p style="margin:0 0 20px;color:#57534e;line-height:1.6;">
+    <!--
+      Ni « passée » ni « hier ».
+
+      Le premier accordait au féminin en dur : la moitié des destinataires
+      recevait un message mal écrit à leur sujet, ce qui se remarque plus
+      qu'une tournure neutre. Le second était faux une fois sur deux — la
+      tâche balaie une fenêtre de vingt-quatre heures pour tolérer un arrêt
+      du service, si bien que le rendez-vous peut dater de l'avant-veille.
+      La date exacte figure juste en dessous ; l'approximer par-dessus
+      n'ajoutait rien et pouvait se contredire.
+    -->
+    Bonjour <span th:text="${client}">Salma</span>, votre rendez-vous chez
+    <strong th:text="${salon}">Dar Zine</strong> pour
+    <strong th:text="${prestation}">une coupe femme</strong> est passé.
+    Un mot sur votre visite aiderait les prochains à choisir.
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="background:#faf9f7;border-radius:12px;padding:16px;">
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Prestation</td>
+        <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${prestation}">Coupe femme</td></tr>
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Avec</td>
+        <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${employe}">Sofia</td></tr>
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Le</td>
+        <td style="padding:4px 0;text-align:right;" th:text="${dateHeure}">jeudi 3 septembre à 14:00</td></tr>
+  </table>
+
+  <p style="margin:24px 0 0;text-align:center;">
+    <a th:href="${lienAvis}"
+       style="display:inline-block;background:#1c1917;color:#ffffff;text-decoration:none;
+              padding:12px 24px;border-radius:12px;font-weight:600;font-size:15px;">
+      Donner mon avis
+    </a>
+  </p>
+
+  <p style="margin:16px 0 0;color:#a8a29e;line-height:1.6;font-size:13px;text-align:center;">
+    Deux minutes, une note et quelques mots. Le salon pourra vous répondre.
+  </p>
+</div>
+</body>
+</html>

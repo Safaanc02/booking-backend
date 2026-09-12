@@ -9,6 +9,7 @@ import com.example.booking.dto.SalonResponse;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutAvis;
 import com.example.booking.model.enums.StatutDemandeDemo;
+import com.example.booking.notification.DemandeAvisPlanificateur;
 import com.example.booking.notification.RappelPlanificateur;
 import com.example.booking.service.AvisService;
 import com.example.booking.service.CurrentUserService;
@@ -36,6 +37,7 @@ public class AdminController {
 
     private final SalonService salonService;
     private final RappelPlanificateur rappels;
+    private final DemandeAvisPlanificateur demandesAvis;
 
     private final AvisService avis;
     private final ReferencementService referencement;
@@ -44,12 +46,14 @@ public class AdminController {
 
     public AdminController(SalonService salonService,
                            RappelPlanificateur rappels,
+                           DemandeAvisPlanificateur demandesAvis,
                            AvisService avis,
                            ReferencementService referencement,
                            DemandeDemoService demandes,
                            CurrentUserService utilisateurCourant) {
         this.salonService = salonService;
         this.rappels = rappels;
+        this.demandesAvis = demandesAvis;
         this.avis = avis;
         this.referencement = referencement;
         this.demandes = demandes;
@@ -131,6 +135,17 @@ public class AdminController {
     @PostMapping("/rappels")
     public ResponseEntity<java.util.Map<String, Integer>> relancerRappels() {
         return ResponseEntity.ok(java.util.Map.of("declenches", rappels.declencher()));
+    }
+
+    /**
+     * Relance immédiate des demandes d'avis.
+     *
+     * Même usage et même garantie que la relance des rappels : le journal des
+     * notifications empêche le doublon, la relancer n'envoie rien de plus.
+     */
+    @PostMapping("/demandes-avis")
+    public ResponseEntity<java.util.Map<String, Integer>> relancerDemandesAvis() {
+        return ResponseEntity.ok(java.util.Map.of("declenches", demandesAvis.declencher()));
     }
 
     /** File de validation : les salons créés par des professionnels, en attente. */

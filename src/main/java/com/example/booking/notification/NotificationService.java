@@ -75,6 +75,19 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Demande d'avis au lendemain d'une visite.
+     *
+     * Seul le client est sollicité, et seulement s'il a laissé une adresse :
+     * un rendez-vous pris au téléphone par le salon n'en a pas toujours.
+     */
+    public void demanderAvis(Reservation r) {
+        if (r.getClient() != null && renseigne(r.getClient().getEmail())) {
+            envoyer(r, TypeNotification.DEMANDE_AVIS, r.getClient().getEmail(),
+                    () -> redacteur.demandeAvis(r));
+        }
+    }
+
     /* ---------- Mécanique ---------- */
 
     private void envoyer(Reservation r, TypeNotification type, String destinataire,

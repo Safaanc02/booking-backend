@@ -28,6 +28,21 @@ WORKDIR /application
 
 # Un processus applicatif n'a aucune raison d'être root, même en conteneur.
 RUN groupadd --system booking && useradd --system --gid booking booking
+
+# Le répertoire des photos existe dans l'image, et appartient au compte qui
+# fait tourner l'application.
+#
+# Ce n'est pas de la politesse : Docker recopie le propriétaire du répertoire
+# de l'image dans un volume nommé la première fois qu'il le monte. Sans ce
+# mkdir, le volume naît appartenant à root, l'application tourne sous
+# « booking », et le premier envoi de photo échoue en AccessDeniedException —
+# une erreur 500 que rien ne laissait prévoir en développement, où l'écriture
+# se fait dans un répertoire local.
+#
+# Sur un volume déjà créé sans ce répertoire, la correction ne s'applique pas
+# d'elle-même : il faut alors un « docker run --rm -v <volume>:/p alpine chown
+# -R 999:999 /p », une seule fois.
+RUN mkdir -p /var/lib/booking/photos && chown -R booking:booking /var/lib/booking
 COPY --from=build /chantier/target/*.jar application.jar
 USER booking
 

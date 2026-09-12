@@ -7,6 +7,7 @@ import com.example.booking.dto.DemandeDemoConfirmation;
 import com.example.booking.dto.DemandeDemoRequest;
 import com.example.booking.dto.DisponibilitesResponse;
 import com.example.booking.dto.EmployeResponse;
+import com.example.booking.dto.ProchaineDispo;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.model.enums.SalonCategorie;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Parcours de découverte, sans authentification.
@@ -157,6 +159,38 @@ public class PublicController {
                 .header(EN_TETE_NON_SITUES,
                         String.valueOf(catalogue.compterNonSitues(ville, q, metier)))
                 .body(catalogue.rechercher(ville, q, metier, autour, pageable));
+    }
+
+    /**
+     * Premier créneau libre de plusieurs salons, en un appel.
+     *
+     * Route séparée de la recherche, et non un champ de plus dans ses
+     * résultats. Trois raisons.
+     *
+     * La recherche doit rester rapide : elle décide de l'affichage de la
+     * page, alors que la disponibilité n'enrichit que des cartes déjà
+     * visibles. Les mêler ferait attendre la liste entière pour un
+     * complément.
+     *
+     * Leurs durées de vie diffèrent : un catalogue bouge rarement, un agenda
+     * à chaque réservation. Une réponse unique se cacherait au rythme du plus
+     * volatil des deux.
+     *
+     * Et la recherche sert aussi là où la disponibilité n'a rien à faire —
+     * une page d'administration, un export.
+     */
+    @GetMapping("/salons/prochaines-dispos")
+    public ResponseEntity<Map<Long, ProchaineDispo>> prochainesDispos(
+            @RequestParam List<Long> ids,
+            @RequestParam(defaultValue = "7") int jours
+    ) {
+        // Borné : la route calcule, elle ne se contente pas de lire. Sans
+        // plafond, une liste d'identifiants suffisamment longue occuperait le
+        // moteur de disponibilité pour toute une page de résultats d'un autre.
+        if (ids.size() > 50) {
+            throw new IllegalArgumentException("Au plus 50 salons par appel");
+        }
+        return cache60(catalogue.prochainesDispos(ids, Math.min(Math.max(jours, 1), 30)));
     }
 
     @GetMapping("/salons/{id}")

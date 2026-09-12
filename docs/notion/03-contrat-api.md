@@ -18,6 +18,7 @@ Aujourd'hui les routes mélangent français et anglais, et `/api/public/**` est 
 | Méthode | Route | Description |
 |---|---|---|
 | `GET` | `/api/public/salons?ville=&metier=&q=&lat=&lng=&rayon=&page=&size=` | Recherche paginée. Renvoie note moyenne, prix minimum et **tous les métiers** exercés. `metier` teste l'ensemble, non la seule catégorie principale. `lat`+`lng` classent du plus proche au plus lointain et ajoutent `distanceKm` à chaque salon — les deux ensemble, sinon `400`. `rayon` en km, défaut 25, plafonné à 100. Une recherche située répond `Cache-Control: no-store` et porte l'en-tête `X-Salons-Non-Situes` |
+| `GET` | `/api/public/salons/prochaines-dispos?ids=&jours=` | Premier créneau libre de plusieurs salons, en un appel. Calculé sur la prestation la plus courte de chacun — celle qui a le plus de créneaux à montrer. Horizon 7 jours par défaut, 50 salons au plus. Un salon absent de la réponse n'a rien de libre dans l'horizon, ou n'a pas encore de catalogue |
 | `GET` | `/api/public/salons/{id}` | Fiche complète : prestations groupées par catégorie, équipe, horaires, photos |
 | `GET` | `/api/public/salons/{id}/prestations` | Catalogue seul |
 | `GET` | `/api/public/salons/{id}/employes?prestationId=` | Praticiens sachant faire cette prestation |

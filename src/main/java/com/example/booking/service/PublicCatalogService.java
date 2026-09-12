@@ -2,6 +2,7 @@ package com.example.booking.service;
 
 import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.PrestationResponse;
+import com.example.booking.dto.ProchaineDispo;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.geo.Distance;
@@ -21,7 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -36,15 +40,23 @@ public class PublicCatalogService {
     private final EmployeRepository employeRepository;
     private final EmployePrestationRepository employePrestationRepository;
     private final PrestationRepository prestationRepository;
+    /**
+     * Le moteur de disponibilité, pour annoncer un premier créneau dès la
+     * liste. Sens unique : le moteur ignore le catalogue, il n'y a pas de
+     * cycle.
+     */
+    private final DisponibiliteService disponibilites;
 
     public PublicCatalogService(SalonRepository salonRepository,
                                 EmployeRepository employeRepository,
                                 EmployePrestationRepository employePrestationRepository,
-                                PrestationRepository prestationRepository) {
+                                PrestationRepository prestationRepository,
+                                DisponibiliteService disponibilites) {
         this.salonRepository = salonRepository;
         this.employeRepository = employeRepository;
         this.employePrestationRepository = employePrestationRepository;
         this.prestationRepository = prestationRepository;
+        this.disponibilites = disponibilites;
     }
 
     /**
@@ -103,6 +115,55 @@ public class PublicCatalogService {
             }
             return reponse;
         });
+    }
+
+    /**
+     * Premier créneau libre de chacun des salons demandés.
+     *
+     * Le prix figurait déjà dans la liste de résultats, la disponibilité non :
+     * on ouvrait les fiches une par une pour découvrir que la première est
+     * complète jusqu'à jeudi. Le contrat d'API l'annonçait depuis le début.
+     *
+     * Calculé en un appel pour toute la page, et non par carte. Vingt cartes
+     * qui interrogent chacune le moteur, c'est vingt allers-retours sur la
+     * route la plus consultée du produit — et une liste qui se remplit par
+     * saccades.
+     *
+     * L'horizon est court, sept jours par défaut. Au-delà, « prochaine
+     * disponibilité » cesse d'être un argument : un salon libre dans douze
+     * jours est un salon complet, et le dire ainsi vaut mieux que d'annoncer
+     * une date que personne n'attendra. La boucle s'arrête au premier jour
+     * trouvé, si bien que le cas courant — libre aujourd'hui ou demain — ne
+     * coûte qu'un ou deux calculs.
+     */
+    public Map<Long, ProchaineDispo> prochainesDispos(Collection<Long> salonIds, int jours) {
+        if (salonIds.isEmpty()) return Map.of();
+
+        Map<Long, Long> vitrines = prestationRepository.prestationVitrineParSalon(salonIds).stream()
+                .collect(Collectors.toMap(l -> (Long) l[0], l -> (Long) l[1]));
+
+        Map<Long, ProchaineDispo> resultat = new LinkedHashMap<>();
+        for (Long salonId : salonIds) {
+            Long prestationId = vitrines.get(salonId);
+            // Catalogue vide : le salon vient d'être référencé et son
+            // paramétrage n'est pas terminé. Rien à annoncer, et surtout pas
+            // « complet », qui laisserait croire à un agenda plein.
+            if (prestationId == null) continue;
+
+            List<LocalDate> ouverts = disponibilites.prochainsJoursDisponibles(
+                    salonId, prestationId, null, 1);
+            if (ouverts.isEmpty()) continue;
+
+            LocalDate jour = ouverts.get(0);
+            // Au-delà de l'horizon, on préfère ne rien dire : voir la section
+            // ci-dessus. prochainsJoursDisponibles balaie l'horizon complet du
+            // moteur, plus large que celui d'une liste de résultats.
+            if (jour.isAfter(LocalDate.now(disponibilites.zone()).plusDays(jours))) continue;
+
+            disponibilites.creneaux(salonId, prestationId, jour, null).stream().findFirst()
+                    .ifPresent(c -> resultat.put(salonId, new ProchaineDispo(jour, c.heure())));
+        }
+        return resultat;
     }
 
     /**

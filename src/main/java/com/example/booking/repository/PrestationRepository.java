@@ -32,4 +32,37 @@ public interface PrestationRepository extends JpaRepository<Prestation, Long> {
             GROUP BY p.salon.id
             """)
     List<Object[]> prixDEntreeParSalon(@Param("salonIds") Collection<Long> salonIds);
+
+    /**
+     * Prestation la plus courte de chaque salon, pour calculer une prochaine
+     * disponibilité représentative.
+     *
+     * La plus courte, et non la moins chère : c'est elle qui a le plus de
+     * créneaux libres à montrer. Annoncer « libre demain » d'après un balayage
+     * de deux heures donnerait un salon plus occupé qu'il ne l'est, et
+     * découragerait un client qui n'en voulait qu'une demi-heure.
+     *
+     * En un seul appel pour toute la page : vingt salons, vingt requêtes pour
+     * un identifiant chacune, ce serait sur la route la plus consultée du
+     * produit.
+     *
+     * Le départage par identifiant n'est pas décoratif — deux prestations de
+     * même durée rendraient un ordre instable, et la disponibilité annoncée
+     * changerait d'un rafraîchissement à l'autre sans que rien n'ait bougé.
+     */
+    @Query("""
+            SELECT p.salon.id, p.id FROM Prestation p
+            WHERE p.salon.id IN :salonIds
+              AND p.actif = true
+              AND p.dureeMinutes = (
+                  SELECT MIN(q.dureeMinutes) FROM Prestation q
+                  WHERE q.salon.id = p.salon.id AND q.actif = true
+              )
+              AND p.id = (
+                  SELECT MIN(r.id) FROM Prestation r
+                  WHERE r.salon.id = p.salon.id AND r.actif = true
+                    AND r.dureeMinutes = p.dureeMinutes
+              )
+            """)
+    List<Object[]> prestationVitrineParSalon(@Param("salonIds") Collection<Long> salonIds);
 }

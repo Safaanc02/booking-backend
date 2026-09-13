@@ -2,6 +2,7 @@ package com.example.booking.controller;
 
 import com.example.booking.dto.AbsenceRequest;
 import com.example.booking.dto.AbsenceResponse;
+import com.example.booking.dto.ClientSalon;
 import com.example.booking.dto.AgendaResponse;
 import com.example.booking.dto.ReservationProRequest;
 import com.example.booking.dto.EmployeRequest;
@@ -9,6 +10,7 @@ import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.HoraireRequest;
 import com.example.booking.dto.HoraireResponse;
 import com.example.booking.model.enums.StatutReservation;
+import com.example.booking.service.FicheClientService;
 import com.example.booking.service.AgendaService;
 import com.example.booking.dto.AvisResponse;
 import com.example.booking.service.AvisService;
@@ -35,13 +37,16 @@ import java.util.Map;
 public class ProController {
 
     private final EquipeService equipe;
+    private final FicheClientService fiches;
     private final AgendaService agenda;
     private final AvisService avis;
 
-    public ProController(EquipeService equipe, AgendaService agenda, AvisService avis) {
+    public ProController(EquipeService equipe, AgendaService agenda, AvisService avis,
+                         FicheClientService fiches) {
         this.equipe = equipe;
         this.agenda = agenda;
         this.avis = avis;
+        this.fiches = fiches;
     }
 
     /**
@@ -170,6 +175,51 @@ public class ProController {
             @PathVariable Long employeId,
             @Valid @RequestBody List<HoraireRequest> semaine) {
         return ResponseEntity.ok(equipe.remplacerHorairesEmploye(employeId, semaine));
+    }
+
+    /* ---------- Fiches clients ---------- */
+
+    /**
+     * Les clients du salon, du plus récemment venu au plus ancien.
+     *
+     * `q` cherche dans le nom et le numéro. Le filtre s'applique après
+     * l'agrégation : chercher « Bennani » doit trouver la fiche, pas seulement
+     * les réservations qui portent ce nom.
+     */
+    @GetMapping("/salons/{salonId}/clients")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
+    public ResponseEntity<List<ClientSalon>> clients(@PathVariable Long salonId,
+                                                     @RequestParam(required = false) String q) {
+        return ResponseEntity.ok(fiches.lister(salonId, q));
+    }
+
+    /**
+     * Une fiche, historique compris.
+     *
+     * La clé passe en paramètre et non dans le chemin : c'est un numéro de
+     * téléphone, et un « + » ou un « / » dans un segment d'URL se décode
+     * différemment selon les serveurs traversés.
+     */
+    @GetMapping("/salons/{salonId}/clients/fiche")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
+    public ResponseEntity<ClientSalon> fiche(@PathVariable Long salonId,
+                                             @RequestParam String cle) {
+        return ResponseEntity.ok(fiches.fiche(salonId, cle));
+    }
+
+    /**
+     * La note du salon sur ce client. Un texte vide l'efface.
+     *
+     * Elle appartient au salon qui l'écrit, et à lui seul : le droit est celui
+     * de gérer *ce* salon, et la lecture filtre toujours dessus.
+     */
+    @PutMapping("/salons/{salonId}/clients/note")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
+    public ResponseEntity<Map<String, String>> noterClient(@PathVariable Long salonId,
+                                                           @RequestParam String cle,
+                                                           @RequestBody(required = false) String texte) {
+        String enregistre = fiches.enregistrerNote(salonId, cle, texte);
+        return ResponseEntity.ok(java.util.Collections.singletonMap("note", enregistre));
     }
 
     /* ---------- Absences ---------- */

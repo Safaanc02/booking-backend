@@ -109,6 +109,87 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                           @Param("fin") Instant fin);
 
     /**
+     * Les clients d'un salon, agrégés depuis ses réservations.
+     *
+     * Requête native : la clé passe par normaliser_telephone, une fonction SQL,
+     * et l'agrégation conditionnelle par statut se dit mal en JPQL.
+     *
+     * La clé unifie les deux origines de réservation. En ligne le client a un
+     * compte, au téléphone le salon saisit un nom et un numéro sans compte :
+     * se fier au compte couperait en deux la même personne selon la façon dont
+     * elle a réservé. Le numéro libre prime sur celui du compte — c'est celui
+     * que le salon vient de noter, donc le plus à jour.
+     *
+     * Le nom retenu est celui de la réservation la plus récente : une personne
+     * mariée, un prénom mal orthographié au téléphone, et c'est la dernière
+     * graphie qui vaut.
+     *
+     * Le filtre LIKE sur le nom et le numéro sert la recherche de l'écran. Il
+     * s'applique après l'agrégation — chercher « Bennani » doit trouver la
+     * fiche, pas seulement les réservations qui portent ce nom.
+     *
+     * `cle` sert l'ouverture d'une fiche. La première version agrégeait tous
+     * les clients du salon puis n'en gardait qu'un en Java : ouvrir une fiche
+     * coûtait alors autant que la liste entière, et ce coût grandissait avec
+     * la clientèle — exactement le salon pour qui l'écran est utile.
+     */
+    @Query(value = """
+            SELECT cle, nom, telephone, visites, annulations, absences,
+                   premiere_visite, derniere_visite, total_depense
+            FROM (
+                SELECT
+                    COALESCE(
+                        normaliser_telephone(r.client_telephone_libre),
+                        normaliser_telephone(u.telephone),
+                        'compte:' || r.client_id
+                    ) AS cle,
+                    (array_agg(COALESCE(r.client_nom_libre, u.full_name, u.username)
+                               ORDER BY r.debut DESC))[1] AS nom,
+                    (array_agg(COALESCE(r.client_telephone_libre, u.telephone)
+                               ORDER BY r.debut DESC))[1] AS telephone,
+                    count(*) FILTER (WHERE r.statut = 'HONOREE')                     AS visites,
+                    count(*) FILTER (WHERE r.statut IN ('ANNULEE_CLIENT','ANNULEE_SALON')) AS annulations,
+                    count(*) FILTER (WHERE r.statut = 'ABSENT')                      AS absences,
+                    min(r.debut) FILTER (WHERE r.statut = 'HONOREE')                 AS premiere_visite,
+                    max(r.debut) FILTER (WHERE r.statut = 'HONOREE')                 AS derniere_visite,
+                    COALESCE(sum(r.prix_fige) FILTER (WHERE r.statut = 'HONOREE'), 0) AS total_depense
+                FROM reservation r
+                LEFT JOIN users u ON u.id = r.client_id
+                WHERE r.salon_id = :salonId
+                GROUP BY 1
+            ) fiches
+            WHERE cle IS NOT NULL
+              AND (CAST(:cle AS varchar) IS NULL OR cle = CAST(:cle AS varchar))
+              AND (CAST(:q AS varchar) IS NULL
+                   OR nom ILIKE CONCAT('%', CAST(:q AS varchar), '%')
+                   OR telephone ILIKE CONCAT('%', CAST(:q AS varchar), '%'))
+            ORDER BY derniere_visite DESC NULLS LAST, cle
+            """, nativeQuery = true)
+    List<Object[]> clientsDuSalon(@Param("salonId") Long salonId,
+                                  @Param("q") String q,
+                                  @Param("cle") String cle);
+
+    /**
+     * Réservations d'un client précis dans ce salon, du plus récent au plus ancien.
+     *
+     * La même expression de clé que ci-dessus, à la lettre. Les deux doivent
+     * bouger ensemble : une fiche dont l'historique ne correspond pas à ses
+     * compteurs serait pire que pas de fiche du tout.
+     */
+    @Query(value = """
+            SELECT r.* FROM reservation r
+            LEFT JOIN users u ON u.id = r.client_id
+            WHERE r.salon_id = :salonId
+              AND COALESCE(
+                      normaliser_telephone(r.client_telephone_libre),
+                      normaliser_telephone(u.telephone),
+                      'compte:' || r.client_id
+                  ) = CAST(:cle AS varchar)
+            ORDER BY r.debut DESC
+            """, nativeQuery = true)
+    List<Reservation> reservationsDuClient(@Param("salonId") Long salonId, @Param("cle") String cle);
+
+    /**
      * Planning de plusieurs praticiens sur une fenêtre, tous statuts confondus.
      *
      * Sert au planning personnel : un praticien doit voir ses annulations et

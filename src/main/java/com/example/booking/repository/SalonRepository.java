@@ -203,6 +203,39 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
                           @Param("q") String q,
                           @Param("metier") SalonCategorie metier);
 
+    /** Nombre de salons par statut, pour le tableau de bord. */
+    @Query("SELECT s.statut, count(s) FROM Salon s GROUP BY s.statut")
+    List<Object[]> compterParStatut();
+
+    /**
+     * Salons actifs qui n'ont rien reçu depuis la date donnée.
+     *
+     * C'est le chiffre qui dit si le réseau tient. Un salon installé qui ne
+     * reçoit aucune réservation ne restera pas : il ne verra jamais ce que le
+     * produit lui apporte, et il partira sans rien dire. D'où la liste nommée
+     * plutôt qu'un compte — c'est le seul indicateur du tableau qu'on peut
+     * encore rattraper, à condition de savoir qui appeler.
+     *
+     * `catalogue_vide` distingue deux causes qui appellent deux gestes : un
+     * salon sans prestation n'a pas fini d'être installé, et c'est à l'équipe
+     * de terminer ; un salon au catalogue rempli mais sans réservation a un
+     * problème de visibilité ou de tarif, et c'est une conversation.
+     */
+    @Query(value = """
+            SELECT s.id, s.nom, s.ville, s.cree_le,
+                   (SELECT max(r.debut) FROM reservation r WHERE r.salon_id = s.id) AS derniere,
+                   NOT EXISTS (SELECT 1 FROM prestation p
+                                WHERE p.salon_id = s.id AND p.actif = true) AS catalogue_vide
+              FROM salon s
+             WHERE s.statut = 'ACTIF'
+               AND NOT EXISTS (
+                   SELECT 1 FROM reservation r
+                    WHERE r.salon_id = s.id AND r.debut >= :depuis
+               )
+             ORDER BY s.cree_le
+            """, nativeQuery = true)
+    List<Object[]> salonsSansReservationDepuis(@Param("depuis") java.time.Instant depuis);
+
     List<Salon> findByOwnerIdOrderByNomAsc(Long ownerId);
 
     Page<Salon> findByStatutOrderByCreeLeAsc(SalonStatut statut, Pageable pageable);

@@ -6,11 +6,13 @@ import com.example.booking.dto.DemandeDemoResponse;
 import com.example.booking.dto.ReferencementResponse;
 import com.example.booking.dto.ReferencementSalonRequest;
 import com.example.booking.dto.SalonResponse;
+import com.example.booking.dto.TableauDeBord;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutAvis;
 import com.example.booking.model.enums.StatutDemandeDemo;
 import com.example.booking.notification.DemandeAvisPlanificateur;
 import com.example.booking.notification.RappelPlanificateur;
+import com.example.booking.service.TableauDeBordService;
 import com.example.booking.service.AvisService;
 import com.example.booking.service.CurrentUserService;
 import com.example.booking.service.DemandeDemoService;
@@ -38,6 +40,7 @@ public class AdminController {
     private final SalonService salonService;
     private final RappelPlanificateur rappels;
     private final DemandeAvisPlanificateur demandesAvis;
+    private final TableauDeBordService tableau;
 
     private final AvisService avis;
     private final ReferencementService referencement;
@@ -47,6 +50,7 @@ public class AdminController {
     public AdminController(SalonService salonService,
                            RappelPlanificateur rappels,
                            DemandeAvisPlanificateur demandesAvis,
+                           TableauDeBordService tableau,
                            AvisService avis,
                            ReferencementService referencement,
                            DemandeDemoService demandes,
@@ -54,6 +58,7 @@ public class AdminController {
         this.salonService = salonService;
         this.rappels = rappels;
         this.demandesAvis = demandesAvis;
+        this.tableau = tableau;
         this.avis = avis;
         this.referencement = referencement;
         this.demandes = demandes;
@@ -146,6 +151,18 @@ public class AdminController {
     @PostMapping("/demandes-avis")
     public ResponseEntity<java.util.Map<String, Integer>> relancerDemandesAvis() {
         return ResponseEntity.ok(java.util.Map.of("declenches", demandesAvis.declencher()));
+    }
+
+    /**
+     * L'état de la plateforme.
+     *
+     * `jours` fixe la fenêtre d'activité, trente par défaut : assez pour
+     * lisser une semaine creuse, assez court pour qu'un décrochage se voie.
+     */
+    @GetMapping("/tableau-de-bord")
+    public ResponseEntity<TableauDeBord> tableauDeBord(
+            @RequestParam(defaultValue = "30") int jours) {
+        return ResponseEntity.ok(tableau.etat(Math.min(Math.max(jours, 1), 365)));
     }
 
     /** File de validation : les salons créés par des professionnels, en attente. */

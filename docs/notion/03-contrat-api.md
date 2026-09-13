@@ -13,6 +13,20 @@ Aujourd'hui les routes mélangent français et anglais, et `/api/public/**` est 
 - **`/api/admin/**`** → administration plateforme
 - Ressources au **pluriel**, en **français** (cohérent avec le domaine métier déjà écrit)
 
+## Administration — pilotage
+
+| Méthode | Route | Description |
+|---|---|---|
+| `GET` | `/api/admin/tableau-de-bord?jours=30` | Réseau par statut, activité et volume honoré sur la fenêtre, file commerciale, taux de conversion, et **salons actifs sans aucune réservation**. Le taux se rapporte aux demandes tranchées — converties ou perdues — et non au total : le compter sur le total ferait baisser l'indicateur à chaque nouvelle demande, c'est-à-dire quand les choses vont bien |
+
+## Professionnel — fiches clients
+
+| Méthode | Route | Description |
+|---|---|---|
+| `GET` | `/api/pro/salons/{id}/clients?q=` | Clients du salon, agrégés depuis ses réservations. Un client est un **numéro de téléphone** ramené à sa forme nationale : c'est la seule donnée commune aux réservations en ligne et par téléphone |
+| `GET` | `/api/pro/salons/{id}/clients/fiche?cle=` | Une fiche, historique compris. La clé passe en paramètre et non dans le chemin — un `+` dans un segment d'URL se décode différemment selon les serveurs traversés |
+| `PUT` | `/api/pro/salons/{id}/clients/note?cle=` | Note privée du salon, en texte brut. Un corps vide l'efface. **Jamais partagée entre salons** |
+
 ## Public — parcours client
 
 | Méthode | Route | Description |

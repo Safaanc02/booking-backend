@@ -104,7 +104,7 @@ Tous les fichiers de `booking-frontend/src/pages` et `components` sont **actuell
 | PR-07 | Saisie manuelle d'une réservation prise par téléphone | P1 | 3 |
 | PR-08 | Marquer une résa `HONOREE` / `ABSENT` | P1 | 2 |
 | PR-09 | Déplacement d'un rendez-vous en glisser-déposer | P2 | 5 |
-| PR-10 | Fiche client : historique, notes, compteur de no-shows | P2 | 5 |
+| PR-10 | ~~Fiche client : historique, notes, compteur de no-shows~~ — ✅ **fait** | P2 | 5 |
 
 **Total : 49 points**
 
@@ -138,7 +138,7 @@ Tous les fichiers de `booking-frontend/src/pages` et `components` sont **actuell
 |---|---|:-:|:-:|
 | AD-01 | File de validation des salons | P1 | 3 |
 | AD-02 | Gestion des utilisateurs | P2 | 3 |
-| AD-03 | Tableau de bord plateforme | P3 | 5 |
+| AD-03 | ~~Tableau de bord plateforme~~ — ✅ **fait** | P3 | 5 |
 
 **Total : 11 points**
 

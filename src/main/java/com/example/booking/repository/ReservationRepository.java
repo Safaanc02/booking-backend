@@ -108,6 +108,23 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                           @Param("debut") Instant debut,
                                           @Param("fin") Instant fin);
 
+    /** Réservations par statut depuis une date, pour le tableau de bord. */
+    @Query("SELECT r.statut, count(r) FROM Reservation r WHERE r.debut >= :depuis GROUP BY r.statut")
+    List<Object[]> compterParStatutDepuis(@Param("depuis") Instant depuis);
+
+    /**
+     * Volume passé par la plateforme sur la période, au tarif figé.
+     *
+     * Les honorées seules. Une réservation annulée n'a rien fait entrer dans
+     * la caisse du salon, et la compter gonflerait un chiffre dont toute
+     * l'utilité est d'être comparable d'un mois sur l'autre.
+     */
+    @Query("""
+            SELECT COALESCE(sum(r.prixFige), 0) FROM Reservation r
+            WHERE r.debut >= :depuis AND r.statut = com.example.booking.model.enums.StatutReservation.HONOREE
+            """)
+    java.math.BigDecimal volumeHonoreDepuis(@Param("depuis") Instant depuis);
+
     /**
      * Les clients d'un salon, agrégés depuis ses réservations.
      *

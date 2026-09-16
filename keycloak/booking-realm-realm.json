@@ -1,7 +1,7 @@
 {
   "realm": "booking-realm",
   "enabled": true,
-  "displayName": "Booking.ma",
+  "displayName": "DarZin",
   "sslRequired": "none",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
@@ -117,7 +117,7 @@
       "username": "admin",
       "enabled": true,
       "emailVerified": true,
-      "email": "admin@booking.ma",
+      "email": "admin@darzin.ma",
       "firstName": "Super",
       "lastName": "Admin",
       "credentials": [
@@ -135,7 +135,7 @@
       "username": "pro1",
       "enabled": true,
       "emailVerified": true,
-      "email": "pro1@booking.ma",
+      "email": "pro1@darzin.ma",
       "firstName": "Karim",
       "lastName": "Benali",
       "credentials": [
@@ -153,7 +153,7 @@
       "username": "client1",
       "enabled": true,
       "emailVerified": true,
-      "email": "client1@booking.ma",
+      "email": "client1@darzin.ma",
       "firstName": "Salma",
       "lastName": "Idrissi",
       "credentials": [
@@ -185,8 +185,8 @@
   "smtpServer": {
     "host": "mailpit",
     "port": "1025",
-    "from": "ne-pas-repondre@booking.ma",
-    "fromDisplayName": "Booking.ma",
+    "from": "ne-pas-repondre@darzin.ma",
+    "fromDisplayName": "DarZin",
     "replyTo": "",
     "ssl": "false",
     "starttls": "false",

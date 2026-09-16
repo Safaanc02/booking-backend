@@ -1,5 +1,5 @@
 /*
- * Écran d'authentification Booking.ma
+ * Écran d'authentification DarZin
  *
  * Reprend le vocabulaire visuel de l'application — même bordeaux, même fond
  * ivoire, mêmes rayons de courbure — pour que la connexion ne donne pas
@@ -14,19 +14,19 @@
 /* Jetons — alignés sur src/index.css de l'application               */
 /* ------------------------------------------------------------------ */
 :root {
-  --brand-50:  #fdf3f4;
-  --brand-100: #fbe8ea;
-  --brand-200: #f6d0d6;
-  --brand-400: #d98693;
-  --brand-500: #c2566a;
-  --brand-600: #a83f54;
-  --brand-700: #8b3244;
+  --brand-50:  #f9f5f3;
+  --brand-100: #f3e9e5;
+  --brand-200: #ead3ca;
+  --brand-400: #d48e73;
+  --brand-500: #c86b47;
+  --brand-600: #a15030;
+  --brand-700: #7f4229;
   /* Ajoutées pour le panneau de l'écran scindé : le fond plein a besoin
      d'être plus sombre que la 700, et la marque plus claire que la 200. */
-  --brand-300: #eeaab5;
-  --brand-800: #6f2837;
+  --brand-300: #dfb5a4;
+  --brand-800: #603422;
 
-  --ivoire:   #faf9f7;
+  --ivoire:   #faf8f6;
   --encre:    #1c1917;
   --gris-500: #78716c;
   --gris-400: #a8a29e;
@@ -113,7 +113,6 @@
   letter-spacing: -0.02em;
 }
 .b-brand-texte { color: #fff; }
-.b-brand-point  { color: var(--brand-300); }
 
 /*
  * Accroche du panneau.

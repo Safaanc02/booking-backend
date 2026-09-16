@@ -215,12 +215,12 @@ const installer = async ({ fiche, prestations, equipe, valider = true, proprieta
 bleu('→ Salons, équipes et catalogues')
 
 const darZine = await installer({
-  proprietaire: { identifiant: 'pro.darzine', prenom: 'Leila', nom: 'Amrani',
-                  email: 'leila@darzine.ma' },
+  proprietaire: { identifiant: 'pro.riadnour', prenom: 'Leila', nom: 'Amrani',
+                  email: 'leila@riadnour.ma' },
   fiche: {
-    nom: 'Dar Zine', ville: 'Marrakech', quartier: 'Guéliz',
+    nom: 'Riad Nour', ville: 'Marrakech', quartier: 'Guéliz',
     adresse: '45 Rue Ibn Batouta', telephone: '0661234567',
-    email: 'contact@darzine.ma', delaiAnnulationHeures: 12,
+    email: 'contact@riadnour.ma', delaiAnnulationHeures: 12,
     // Trois métiers : c'est l'institut de quartier ordinaire au Maroc, et le
     // jeu de démonstration ne le montrait pas. Le premier est le principal,
     // celui dont le salon porte la couleur.
@@ -241,7 +241,7 @@ const darZine = await installer({
     { prenom: 'Sofia', nom: 'Alami', titre: 'Coloriste',
       fait: ['Coupe femme', 'Brushing', 'Balayage', 'Soin à l’huile d’argan', 'Soin du visage'],
       compte: { identifiant: 'equipe.sofia', prenom: 'Sofia', nom: 'Alami',
-                email: 'sofia@darzine.ma' } },
+                email: 'sofia@riadnour.ma' } },
     // Youssef ne fait pas la couleur : le moteur ne doit jamais le proposer
     // sur le balayage.
     // Youssef est GESTIONNAIRE : Leila lui délègue la boutique. Il administre
@@ -250,7 +250,7 @@ const darZine = await installer({
       fait: ['Coupe femme', 'Brushing', 'Manucure simple'],
       role: 'GESTIONNAIRE',
       compte: { identifiant: 'equipe.youssef', prenom: 'Youssef', nom: 'Tazi',
-                email: 'youssef@darzine.ma' } },
+                email: 'youssef@riadnour.ma' } },
   ],
 })
 
@@ -442,9 +442,9 @@ for (const lieu of [atlas, darZine, nails, firdaws, anfa]) {
   console.log(`    ${lieu.compte.padEnd(26)} ${lieu.salon.nom}`)
 }
 console.log()
-console.log('  \x1b[36mMembres d\'équipe de Dar Zine\x1b[0m — même convention de mot de passe')
+console.log('  \x1b[36mMembres d\'équipe de Riad Nour\x1b[0m — même convention de mot de passe')
 console.log('    equipe.sofia               PRATICIEN    · son planning seulement')
 console.log('    equipe.youssef             GESTIONNAIRE · administre le salon, sans le supprimer')
 console.log()
-console.log('  Chaque salon a son propre propriétaire, et Dar Zine illustre la délégation :')
+console.log('  Chaque salon a son propre propriétaire, et Riad Nour illustre la délégation :')
 console.log('  Youssef gère la boutique sans connaître le mot de passe de Leila.')

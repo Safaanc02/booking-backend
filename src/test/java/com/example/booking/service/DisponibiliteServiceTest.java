@@ -78,7 +78,7 @@ class DisponibiliteServiceTest {
 
         date = LocalDate.now(ZONE).plusDays(10);
 
-        salon = Salon.builder().id(SALON_ID).nom("Dar Zine").build();
+        salon = Salon.builder().id(SALON_ID).nom("Riad Nour").build();
         employe = Employe.builder().id(EMPLOYE_ID).salon(salon).prenom("Sofia").actif(true).build();
         prestation = Prestation.builder()
                 .id(PRESTATION_ID).salon(salon).nom("Coupe femme")

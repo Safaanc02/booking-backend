@@ -86,17 +86,17 @@ rôle `pro`.
 | `admin` | admin | Rien — valide les salons, traverse tous les contrôles de propriété |
 | `client1` | client | Rien — réserve, note, annule |
 | `pro1` | pro | Atlas Barber (Casablanca) |
-| `pro.darzine` | pro | Dar Zine (Marrakech) |
+| `pro.riadnour` | pro | Riad Nour (Marrakech) |
 | `pro.nails` | pro | Nails & Co (Casablanca) |
 | `pro.firdaws` | pro | Hammam Al Firdaws (Rabat) |
 | `pro.anfa` | pro | Salon Anfa — en attente de validation |
 
-### Membres d'équipe de Dar Zine
+### Membres d'équipe de Riad Nour
 
 | Identifiant | Rôle | Peut |
 |---|---|---|
 | `equipe.sofia` | PRATICIEN | Consulter **son** planning, rien d'autre |
-| `equipe.youssef` | GESTIONNAIRE | Administrer Dar Zine comme Leila — sauf le supprimer |
+| `equipe.youssef` | GESTIONNAIRE | Administrer Riad Nour comme Leila — sauf le supprimer |
 
 Une fiche d'équipe rattachée à un compte donne des droits. Deux niveaux :
 

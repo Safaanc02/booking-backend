@@ -31,7 +31,7 @@ class JetonAnnulationTest {
         jetons = new JetonAnnulation(SECRET, 90);
         reservation = Reservation.builder()
                 .id(42L)
-                .salon(Salon.builder().id(1L).nom("Dar Zine").build())
+                .salon(Salon.builder().id(1L).nom("Riad Nour").build())
                 .debut(Instant.now().plus(3, ChronoUnit.DAYS))
                 .build();
     }

@@ -32,7 +32,7 @@ public class OpenApiConfig {
                            @Value("${server.port:8080}") String port) {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Booking.ma — API")
+                        .title("DarZin — API")
                         .version("v1")
                         .description("""
                                 Marketplace de réservation beauté au Maroc.
@@ -54,7 +54,7 @@ public class OpenApiConfig {
                                 **Montants** en dirhams (MAD). **Instants** en UTC, à présenter dans le fuseau
                                 `Africa/Casablanca` — qui passe de UTC+1 à UTC+0 pendant le Ramadan.
                                 """)
-                        .contact(new Contact().name("Équipe Booking.ma"))
+                        .contact(new Contact().name("Équipe DarZin"))
                         .license(new License().name("Propriétaire")))
                 .servers(List.of(
                         new Server().url("http://localhost:" + port).description("Développement local")))

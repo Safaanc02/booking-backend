@@ -4,11 +4,11 @@
 <div th:fragment="contenu">
   <h1 style="margin:0 0 8px;font-size:20px;">Nouvelle réservation</h1>
   <p style="margin:0 0 20px;color:#57534e;line-height:1.6;">
-    Un rendez-vous vient d'être pris en ligne chez <strong th:text="${salon}">Dar Zine</strong>.
+    Un rendez-vous vient d'être pris en ligne chez <strong th:text="${salon}">Riad Nour</strong>.
   </p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-         style="background:#faf9f7;border-radius:12px;padding:16px;">
+         style="background:#faf8f6;border-radius:12px;padding:16px;">
     <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Client</td>
         <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${client}">Salma Idrissi</td></tr>
     <tr th:if="${telephoneClient}">
@@ -26,7 +26,7 @@
 
   <p style="margin:20px 0 0;">
     <a th:href="${lienAgenda}"
-       style="display:inline-block;background:#a83f54;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;">
+       style="display:inline-block;background:#a15030;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;">
       Ouvrir mon agenda
     </a>
   </p>

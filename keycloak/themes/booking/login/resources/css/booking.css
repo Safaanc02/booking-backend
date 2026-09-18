@@ -181,12 +181,13 @@
 }
 
 /*
- * Le jardin, posé par ciel.js.
+ * L'horizon, posé par ciel.js.
  *
- * Neuf fleurs en silhouette qui tiennent le bas du panneau. Elles n'ont pas
- * de couleur propre : elles assombrissent ce qu'il y a derrière, si bien
- * qu'elles restent justes quelle que soit l'heure — cuivrées au crépuscule,
- * vertes la nuit, sans une seule règle de plus.
+ * Des colonnes de créneaux en silhouette, qui tiennent le bas du panneau —
+ * le même motif que le site. Elles n'ont pas de couleur propre : elles
+ * assombrissent ce qu'il y a derrière, si bien qu'elles restent justes
+ * quelle que soit l'heure — cuivrées au crépuscule, vertes la nuit, sans une
+ * seule règle de plus.
  *
  * Elles couvrent aussi la zone où sont posées la marque et l'accroche, qui y
  * gagnent le contraste qu'un dégradé seul ne garantissait pas à toute heure.
@@ -195,7 +196,7 @@
   position: absolute;
   left: -2%;
   bottom: 0;
-  /* Un peu plus large que le panneau : les fleurs des extrémités doivent
+  /* Un peu plus large que le panneau : les colonnes des extrémités doivent
      sortir du cadre plutôt que s'y arrêter net. La hauteur est un plafond —
      `meet` dessine à la largeur disponible et cale le tout en bas, l'espace
      restant au-dessus est simplement vide. */

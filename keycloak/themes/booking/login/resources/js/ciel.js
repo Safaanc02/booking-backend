@@ -9,8 +9,8 @@
  *   2. Un astre le traverse : soleil chaud le jour, lune pâle la nuit. Un
  *      disque et son halo, rien de plus. Il ne disparaît jamais — un panneau
  *      vide à 2 h du matin serait un écran cassé, pas une nuit.
- *   3. Un jardin en silhouette tient l'horizon, et glisse à contresens de
- *      l'astre quand la souris bouge : c'est ce décalage qui donne la
+ *   3. Un horizon de créneaux tient le bas du panneau, et glisse à contresens
+ *      de l'astre quand la souris bouge : c'est ce décalage qui donne la
  *      profondeur, bien plus que le déplacement lui-même.
  *   4. Une ligne dit l'heure qu'il est là-bas, et ce qu'elle implique — le
  *      salon dort, son agenda non. C'est la promesse du produit, montrée au
@@ -211,42 +211,32 @@
     ligne.innerHTML = jeu[etat].replace("{H}", hhmm);
   }
 
-  /* ---- Le jardin ---- */
-
-  /* Une corolle de `n` pétales. La même courbe que `Motifs.jsx` côté
-     application : les fleurs d'ici et les motifs du site sont les mêmes. */
-  function petales(n, rayon, largeur) {
-    var d = "";
-    for (var i = 0; i < n; i++) {
-      d += '<path transform="rotate(' + (360 * i) / n + ')" d="M0 0 C '
-        + largeur + " " + (-rayon * 0.42) + " " + largeur + " " + (-rayon * 0.72)
-        + ' 0 ' + -rayon + " C " + -largeur + " " + (-rayon * 0.72) + " "
-        + -largeur + " " + (-rayon * 0.42) + ' 0 0 Z"/>';
-    }
-    return d;
-  }
+  /* ---- L'horizon ---- */
 
   /*
-   * Le jardin.
+   * Des colonnes de créneaux, comme celles d'un agenda vu de loin.
    *
-   * Neuf fleurs de tailles et d'inclinaisons différentes, posées irrégulière-
-   * ment : un rang régulier se lirait comme une frise, pas comme un jardin.
-   * Dessiné en silhouette sombre, il assombrit le bas du panneau — là,
-   * justement, où sont la marque et l'accroche, qui y gagnent en contraste.
-   * Il passe devant l'astre : c'est ce qui donne un horizon derrière lequel
-   * se coucher.
+   * Le même motif que le site, à la même échelle d'intention : la grille du
+   * produit, pas l'ornement du secteur. Les hauteurs sont irrégulières — un
+   * rang régulier se lirait comme une frise, pas comme un horizon — et les
+   * colonnes les plus hautes sont celles des heures pleines.
+   *
+   * Dessiné en silhouette sombre, il assombrit le bas du panneau, là où sont
+   * la marque et l'accroche, qui y gagnent en contraste. Et il passe devant
+   * l'astre : c'est ce qui donne un horizon derrière lequel se coucher.
    */
-  var JARDIN = [
-    { x: 48,  y: 208, t: 0.44, n: 6, r:  12, d: -14 },
-    { x: 152, y: 250, t: 0.30, n: 5, r: -18, d:  10 },
-    { x: 268, y: 178, t: 0.56, n: 8, r:  24, d:  18 },
-    { x: 392, y: 238, t: 0.34, n: 6, r:  -6, d: -12 },
-    { x: 520, y: 196, t: 0.48, n: 5, r:  16, d:  16 },
-    { x: 648, y: 256, t: 0.28, n: 6, r: -22, d:  -8 },
-    { x: 764, y: 184, t: 0.60, n: 8, r:   8, d:  20 },
-    { x: 890, y: 244, t: 0.36, n: 5, r: -14, d: -10 },
-    { x: 966, y: 200, t: 0.42, n: 6, r:  20, d:  14 },
+  var HORIZON = [
+    { x:  10, n: 4 }, { x:  78, n: 7 }, { x: 146, n: 3 }, { x: 214, n: 6 },
+    { x: 282, n: 9 }, { x: 350, n: 5 }, { x: 418, n: 8 }, { x: 486, n: 4 },
+    { x: 554, n: 7 }, { x: 622, n: 11 }, { x: 690, n: 6 }, { x: 758, n: 3 },
+    { x: 826, n: 8 }, { x: 894, n: 5 }, { x: 962, n: 7 },
   ];
+
+  /* Un créneau haut de 18, espacé de 6 : la colonne se lit comme une pile de
+     rendez-vous et non comme une barre pleine. */
+  var CRENEAU = 18;
+  var ECART = 6;
+  var SOL = 300;
 
   var jardin = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   jardin.setAttribute("class", "b-jardin");
@@ -256,19 +246,19 @@
    *
    * `slice` remplissait bien le cadre mais rognait : le panneau étant bien
    * plus haut que large par rapport au dessin, il n'en gardait que la moitié
-   * centrale, agrandie — trois fleurs énormes au lieu de neuf. `meet` les
-   * garde toutes, à la largeur du panneau, posées sur son bord inférieur.
-   * Une déformation non uniforme (`none`) écraserait les corolles.
+   * centrale, agrandie. `meet` garde tout l'horizon, à la largeur du panneau,
+   * posé sur son bord inférieur.
    */
   jardin.setAttribute("preserveAspectRatio", "xMidYMax meet");
   jardin.setAttribute("aria-hidden", "true");
-  jardin.innerHTML = JARDIN.map(function (f) {
-    return '<path d="M' + f.x + " " + f.y + " C " + (f.x + f.d) + " " + (f.y + 40)
-      + " " + (f.x - f.d) + " " + (f.y + 70) + " " + (f.x + f.d / 2) + ' 302" '
-      + 'stroke-width="' + (4 + f.t * 6).toFixed(1) + '" fill="none"/>'
-      + '<g transform="translate(' + f.x + " " + f.y + ") rotate(" + f.r
-      + ") scale(" + f.t + ')">' + petales(f.n, 100, 26)
-      + '<circle r="17"/></g>';
+  jardin.innerHTML = HORIZON.map(function (c) {
+    var cases = "";
+    for (var i = 0; i < c.n; i++) {
+      var y = SOL - (i + 1) * CRENEAU - i * ECART;
+      cases += '<rect x="' + c.x + '" y="' + y.toFixed(1) + '" width="44" height="'
+        + CRENEAU + '" rx="6"/>';
+    }
+    return cases;
   }).join("");
   panneau.insertBefore(jardin, panneau.firstChild);
 

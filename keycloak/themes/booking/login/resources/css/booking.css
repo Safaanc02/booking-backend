@@ -237,6 +237,7 @@
   .b-astre, .b-jardin, .b-header { transition: none; }
 }
 
+
 .b-brand {
   position: relative;
   z-index: 2;
@@ -245,6 +246,48 @@
   letter-spacing: -0.02em;
 }
 .b-brand-texte { color: #fff; }
+
+/*
+ * Le logo, sur toutes les pages du thème.
+ *
+ * Une seule règle suffit à le poser partout : `template.ftl` de `base` écrit
+ * `loginTitleHtml` dans ce conteneur sans condition, sur tous les écrans du
+ * thème. Connexion, inscription, mot de passe oublié, pages d'information —
+ * ce que surcharge `info.ftl`, c'est l'en-tête de la carte de droite, pas ce
+ * panneau.
+ *
+ * Porté par le conteneur et non par le mot qu'il contient, pour que le
+ * symbole se pose au-dessus plutôt qu'à côté : le panneau est haut et étroit,
+ * et la marque y tient mieux empilée.
+ *
+ * L'adresse est relative à cette feuille de style, donc résolue dans les
+ * ressources du thème. C'est le seul moyen fiable : Keycloak préfixe ce
+ * chemin d'un numéro de version qu'aucun fichier de messages ne peut
+ * connaître, et une adresse écrite en dur y casserait à chaque montée de
+ * version.
+ *
+ * Le symbole seul, pas le logo complet : son mot « darzin » est bordeaux, et
+ * le panneau passe au vert sombre la nuit — il y devenait illisible.
+ *
+ * Posé sur une pastille ivoire, et non à même le ciel. Les séparations du
+ * calendrier ne sont pas blanches mais transparentes : le logo a été dessiné
+ * pour du clair. À même le panneau, ces traits prenaient la couleur du ciel —
+ * cuivrés au crépuscule, vert sombre la nuit — et la marque changeait d'aspect
+ * d'heure en heure. La pastille lui rend le fond pour lequel il a été fait.
+ *
+ * Décoratif : le nom de la marque est écrit juste en dessous, en blanc, et
+ * l'annoncer deux fois n'apprend rien à un lecteur d'écran.
+ */
+.b-brand::before {
+  content: "";
+  display: block;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 14px;
+  border-radius: 13px;
+  background: url("../img/logo-darzin.png") center / 74% no-repeat,
+              var(--ivoire);
+}
 
 /*
  * Accroche du panneau.
@@ -289,6 +332,7 @@
     padding: 56px 48px;
   }
   .b-brand { font-size: 30px; }
+  .b-brand::before { width: 58px; height: 58px; margin-bottom: 18px; border-radius: 16px; }
   .b-brand::after { margin-top: 16px; max-width: 18ch; font-size: 30px; }
   /* L'anglais est plus long d'un mot : à 18ch, « call. » se retrouvait seul
      sur une troisième ligne. */

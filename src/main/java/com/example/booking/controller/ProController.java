@@ -90,6 +90,20 @@ public class ProController {
         return ResponseEntity.ok(agenda.monPlanning(date, jours));
     }
 
+    /**
+     * La journée du compte connecté, tous ses salons confondus.
+     *
+     * Distincte de « mon planning », qui ne renvoie que les rendez-vous dont
+     * on est le praticien : un gérant qui ne coupe pas les cheveux n'y voit
+     * rien, alors que sa journée est pleine.
+     */
+    @GetMapping("/ma-journee")
+    @PreAuthorize("hasAnyRole('PRO','ADMIN')")
+    public ResponseEntity<List<AgendaResponse>> maJournee(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(agenda.maJournee(date));
+    }
+
     /** Rendez-vous pris par téléphone ou au comptoir, pour un client sans compte. */
     @PostMapping("/salons/{salonId}/reservations")
     @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")

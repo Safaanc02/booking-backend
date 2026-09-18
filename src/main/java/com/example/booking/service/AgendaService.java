@@ -107,6 +107,39 @@ public class AgendaService {
     }
 
     /**
+     * La journée du gérant, tous ses salons confondus.
+     *
+     * Un gérant peut en tenir plusieurs, et sa question du matin ne porte pas
+     * sur l'un d'eux mais sur l'ensemble : qu'est-ce qui m'attend aujourd'hui.
+     * Y répondre depuis le navigateur imposait un appel par salon — trente et
+     * un pour certains comptes de démonstration — là où une seule requête
+     * suffit.
+     *
+     * `queJePeuxGerer` est la même source que « mes salons » : ce qu'on voit
+     * ici est exactement ce qu'on a le droit de gérer, sans second jeu de
+     * règles à tenir en accord avec le premier.
+     */
+    @Transactional(readOnly = true)
+    public List<AgendaResponse> maJournee(LocalDate date) {
+        String keycloakId = currentUser.currentKeycloakId()
+                .orElseThrow(() -> new SecurityException("Authentification requise"));
+
+        List<Long> salons = salonRepository.queJePeuxGerer(keycloakId).stream()
+                .map(Salon::getId)
+                .toList();
+        // Un compte sans salon n'a pas de journée : ce n'est pas une erreur.
+        if (salons.isEmpty()) return List.of();
+
+        var zone = disponibilites.zone();
+        Instant debut = date.atStartOfDay(zone).toInstant();
+        Instant fin = date.plusDays(1).atStartOfDay(zone).toInstant();
+
+        return reservationRepository.journeeDeSalons(salons, debut, fin).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
      * Rendez-vous pris par téléphone ou au comptoir.
      *
      * Sans cette saisie, les créneaux réservés hors ligne restent proposés en
@@ -213,7 +246,10 @@ public class AgendaService {
 
     private AgendaResponse toResponse(Reservation r) {
         return new AgendaResponse(
-                r.getId(), r.getDebut(), r.getFin(),
+                r.getId(),
+                r.getSalon() != null ? r.getSalon().getId() : null,
+                r.getSalon() != null ? r.getSalon().getNom() : null,
+                r.getDebut(), r.getFin(),
                 r.getStatut().name(),
                 r.getOrigine() != null ? r.getOrigine().name() : null,
                 r.nomClient(), r.telephoneClient(),

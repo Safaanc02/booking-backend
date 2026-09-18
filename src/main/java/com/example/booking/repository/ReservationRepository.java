@@ -36,6 +36,24 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                         @Param("debut") Instant debut,
                                         @Param("fin") Instant fin);
 
+    /**
+     * Agenda de plusieurs salons à la fois.
+     *
+     * Sert la journée du gérant, qui peut en tenir plusieurs. Une requête pour
+     * l'ensemble plutôt qu'une par salon : la différence ne se voit pas à un
+     * salon, elle se voit à trente.
+     */
+    @Query("""
+            SELECT r FROM Reservation r
+            WHERE r.salon.id IN :salonIds
+              AND r.debut < :fin
+              AND r.fin   > :debut
+            ORDER BY r.debut
+            """)
+    List<Reservation> journeeDeSalons(@Param("salonIds") Collection<Long> salonIds,
+                                      @Param("debut") Instant debut,
+                                      @Param("fin") Instant fin);
+
     /** Agenda du salon sur une période, tous praticiens confondus. */
     @Query("""
             SELECT r FROM Reservation r

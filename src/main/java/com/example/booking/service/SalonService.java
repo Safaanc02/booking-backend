@@ -8,6 +8,7 @@ import com.example.booking.model.User;
 import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.config.CustomPermissionEvaluator;
+import com.example.booking.repository.ReservationRepository;
 import com.example.booking.repository.SalonRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,15 +24,18 @@ import java.util.Optional;
 public class SalonService {
 
     private final SalonRepository salonRepository;
+    private final ReservationRepository reservationRepository;
     private final CurrentUserService currentUser;
     private final CustomPermissionEvaluator droits;
     private final LocalisationService localisation;
 
     public SalonService(SalonRepository salonRepository,
+                        ReservationRepository reservationRepository,
                         CurrentUserService currentUser,
                         CustomPermissionEvaluator droits,
                         LocalisationService localisation) {
         this.salonRepository = salonRepository;
+        this.reservationRepository = reservationRepository;
         this.currentUser = currentUser;
         this.droits = droits;
         this.localisation = localisation;
@@ -189,6 +193,24 @@ public class SalonService {
         // Suppression : propriétaire seulement. Déléguer la gestion d'une
         // boutique ne doit pas donner le droit de l'effacer.
         verifierProprietaireStrict(salon);
+
+        /*
+         * Un salon qui a reçu des rendez-vous ne s'efface pas.
+         *
+         * Ce n'est pas une limite technique qu'on contourne : effacer le salon
+         * effacerait l'historique de ses clients — ce qu'ils ont réservé, payé,
+         * et les avis qu'ils ont laissés. Suspendre le retire de la recherche
+         * sans rien détruire, et c'est la bonne réponse.
+         *
+         * La contrainte de clé étrangère le refusait déjà, mais en 500 : une
+         * erreur interne, sans un mot sur la raison, là où le serveur sait
+         * parfaitement pourquoi il refuse.
+         */
+        if (reservationRepository.existsBySalonId(id)) {
+            throw new IllegalStateException(
+                    "Ce salon a des rendez-vous : il ne peut pas être supprimé. "
+                    + "Suspendez-le pour le retirer de la recherche.");
+        }
         salonRepository.delete(salon);
     }
 

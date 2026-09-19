@@ -36,6 +36,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                         @Param("debut") Instant debut,
                                         @Param("fin") Instant fin);
 
+    /** Y a-t-il le moindre rendez-vous sur ce salon, quel que soit son statut ? */
+    boolean existsBySalonId(Long salonId);
+
     /**
      * Agenda de plusieurs salons à la fois.
      *

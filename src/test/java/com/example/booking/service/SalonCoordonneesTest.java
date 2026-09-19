@@ -9,6 +9,7 @@ import com.example.booking.model.User;
 import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.repository.RepereGeoRepository;
+import com.example.booking.repository.ReservationRepository;
 import com.example.booking.repository.SalonRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,7 +66,10 @@ class SalonCoordonneesTest {
         // C'est la surcharge à un seul argument que verifierPeutGerer appelle.
         when(droits.peutGererSalon(anyLong())).thenReturn(true);
 
-        service = new SalonService(salons, comptes, droits, new LocalisationService(reperes));
+        // Le dépôt des réservations ne sert qu'au refus de suppression, que ce
+        // test ne touche pas : un mock nu suffit.
+        service = new SalonService(salons, mock(ReservationRepository.class), comptes, droits,
+                new LocalisationService(reperes));
     }
 
     @Test

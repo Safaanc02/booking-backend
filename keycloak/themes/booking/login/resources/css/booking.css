@@ -14,20 +14,22 @@
 /* Jetons — alignés sur src/index.css de l'application               */
 /* ------------------------------------------------------------------ */
 :root {
-  --brand-50:  #f9f5f3;
-  --brand-100: #f3e9e5;
-  --brand-200: #ead3ca;
-  --brand-400: #d48e73;
-  --brand-500: #c86b47;
-  --brand-600: #a15030;
-  --brand-700: #7f4229;
-  /* Ajoutées pour le panneau de l'écran scindé : le fond plein a besoin
-     d'être plus sombre que la 700, et la marque plus claire que la 200. */
-  --brand-300: #dfb5a4;
-  --brand-800: #603422;
+  /* Repris tel quel de src/index.css : l'écran de connexion et le site
+     doivent porter la même marque au chiffre près. Deux échelles voisines
+     mais différentes se lisent comme une erreur d'impression. */
+  --brand-50:  #fff7f2;
+  --brand-100: #ffece1;
+  --brand-200: #ffbb94;
+  --brand-300: #fb9590;
+  --brand-400: #ea737d;
+  --brand-500: #dc586d;
+  --brand-600: #a33757;
+  --brand-700: #852e4e;
+  --brand-800: #662545;
+  --brand-900: #4c1d3d;
 
-  --ivoire:   #faf8f6;
-  --encre:    #1c1917;
+  --ivoire:   #fffaf7;
+  --encre:    #35142b;
   --gris-500: #78716c;
   --gris-400: #a8a29e;
   --gris-200: #e7e5e4;
@@ -124,8 +126,8 @@
  * merci du moindre réglage. Le voile atteint désormais sa pleine force dès
  * les deux tiers de sa hauteur, là où se trouve justement cette ligne.
  *
- * `z-index: 1` le place au-dessus de l'astre et du jardin, qui n'en ont
- * aucun ; la marque passe à 2 pour rester au-dessus de lui.
+ * `z-index: 1` le place au-dessus de l'astre, qui n'en a aucun ; la marque
+ * passe à 2 pour rester au-dessus de lui.
  */
 .b-header::before {
   content: "";
@@ -180,34 +182,6 @@
               transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/*
- * L'horizon, posé par ciel.js.
- *
- * Des colonnes de créneaux en silhouette, qui tiennent le bas du panneau —
- * le même motif que le site. Elles n'ont pas de couleur propre : elles
- * assombrissent ce qu'il y a derrière, si bien qu'elles restent justes
- * quelle que soit l'heure — cuivrées au crépuscule, vertes la nuit, sans une
- * seule règle de plus.
- *
- * Elles couvrent aussi la zone où sont posées la marque et l'accroche, qui y
- * gagnent le contraste qu'un dégradé seul ne garantissait pas à toute heure.
- */
-.b-jardin {
-  position: absolute;
-  left: -2%;
-  bottom: 0;
-  /* Un peu plus large que le panneau : les colonnes des extrémités doivent
-     sortir du cadre plutôt que s'y arrêter net. La hauteur est un plafond —
-     `meet` dessine à la largeur disponible et cale le tout en bas, l'espace
-     restant au-dessus est simplement vide. */
-  width: 104%;
-  height: 46%;
-  fill: rgba(11, 12, 10, 0.34);
-  stroke: rgba(11, 12, 10, 0.34);
-  pointer-events: none;
-  transform: translate(var(--jardin-x, 0px), var(--jardin-y, 0px));
-  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
-}
 
 /*
  * L'heure de Casablanca, sous l'accroche.
@@ -235,7 +209,7 @@
  * seule l'animation disparaît.
  */
 @media (prefers-reduced-motion: reduce) {
-  .b-astre, .b-jardin, .b-header { transition: none; }
+  .b-astre, .b-header { transition: none; }
 }
 
 

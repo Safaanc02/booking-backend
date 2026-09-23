@@ -205,6 +205,18 @@ services:
     depends_on:
       - api
       - keycloak
+    volumes:
+      # Le magasin de certificats DOIT survivre au conteneur.
+      #
+      # Caddy range dans /data le compte ACME et les certificats obtenus. Sans
+      # volume, chaque recréation du conteneur repart de zéro et redemande un
+      # certificat pour le même nom. Let's Encrypt en délivre cinq par semaine
+      # pour un jeu de noms donné : au sixième, il refuse pendant sept jours,
+      # et le site n'est plus joignable en HTTPS du tout.
+      #
+      # Ce n'est pas une hypothèse : c'est arrivé. Cinq recréations en une
+      # soirée ont suffi à épuiser le quota et à mettre le site à terre.
+      - certificats_caddy:/data
     # Le proxy est ce que voit le visiteur : sa santé est celle du service.
     #
     # La sonde interroge le port 2020, que le Caddyfile réserve à cet usage et
@@ -226,3 +238,4 @@ services:
 volumes:
   donnees_postgres:
   photos_salons:
+  certificats_caddy:

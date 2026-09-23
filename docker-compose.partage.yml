@@ -192,8 +192,16 @@ services:
 
   web:
     build: ../booking-frontend
+    environment:
+      # Le nom d'hôte que Caddy doit servir. Vide, il écoute sur :80 en clair —
+      # ce qu'il faut derrière un tunnel, qui chiffre en amont. Renseigné, il
+      # obtient un certificat Let's Encrypt pour ce nom.
+      ADRESSE_SITE: ${ADRESSE_SITE:-}
     ports:
       - "${PORT_PUBLIC:-8090}:80"
+      # 443 n'est publié que pour le cas d'un nom de domaine ; sans lui, Caddy
+      # ne peut ni répondre en HTTPS ni faire valider son certificat.
+      - "${PORT_TLS:-8443}:443"
     depends_on:
       - api
       - keycloak

@@ -46,3 +46,6 @@ commandes.docx
 docs/*.zip
 .tunnel.pid
 .tunnel.log
+
+# Mot de passe de la boîte aux lettres de test (voir courrier.env.exemple).
+courrier.env

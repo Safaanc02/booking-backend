@@ -43,10 +43,22 @@ services:
     # Le fragment ajoute la route /courrier. Absent, la route n'existe pas.
     volumes:
       - ./docker/courrier.caddy:/etc/caddy/optionnel-courrier.caddy:ro
-    environment:
-      # Le fragment protège la boîte par un mot de passe : sans empreinte,
-      # Caddy refuse de démarrer plutôt que d'ouvrir la route à tout le monde.
-      COURRIER_UTILISATEUR: ${COURRIER_UTILISATEUR:-darzin}
-      COURRIER_HASH: ${COURRIER_HASH:?empreinte du mot de passe /courrier manquante — voir docker/courrier.caddy}
+    # Le mot de passe de la boîte arrive par un fichier à lui, et non par
+    # partage.env.
+    #
+    # Deux raisons. La première est une contrainte : une empreinte bcrypt
+    # contient des « $ », et Compose les interprète comme des variables quand
+    # la valeur transite par ${...}. L'empreinte arrivait tronquée dans le
+    # conteneur, et le mot de passe était refusé sans que rien ne le signale.
+    # Un env_file est transmis tel quel, sans substitution.
+    #
+    # La seconde est de bonne tenue : partage.env porte le mot de passe de la
+    # base et les secrets de Keycloak. Le serveur web n'a aucune raison de les
+    # voir. Il ne reçoit que ce qui le concerne.
+    #
+    # Le fichier est obligatoire : absent, la pile ne démarre pas — plutôt que
+    # d'ouvrir la boîte aux lettres à tout le monde.
+    env_file:
+      - ./courrier.env
     depends_on:
       - mailpit

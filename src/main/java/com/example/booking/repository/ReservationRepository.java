@@ -246,4 +246,82 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     boolean existsByEmployeIdAndStatutInAndDebutLessThanAndFinGreaterThan(
             Long employeId, Collection<StatutReservation> statuts, Instant fin, Instant debut);
+
+    /* ---------- Les chiffres du salon ---------- */
+    /*
+     * Cinq requêtes d'agrégation plutôt qu'un chargement des réservations
+     * suivi d'un comptage en Java. Un salon actif fait quelques milliers de
+     * rendez-vous par an : les ramener tous pour en compter cinq nombres
+     * coûte de la mémoire et du temps pour rien, et la base sait le faire.
+     */
+
+    /** Combien de rendez-vous par statut, et pour quel montant, sur la fenêtre. */
+    @Query("""
+            SELECT r.statut, count(r), coalesce(sum(r.prixFige), 0)
+            FROM Reservation r
+            WHERE r.salon.id = :salonId AND r.debut >= :depuis AND r.debut < :jusqua
+            GROUP BY r.statut
+            """)
+    List<Object[]> bilanParStatut(@Param("salonId") Long salonId,
+                                  @Param("depuis") Instant depuis,
+                                  @Param("jusqua") Instant jusqua);
+
+    /** Le temps réellement occupé, en minutes — pour le taux de remplissage. */
+    @Query("""
+            SELECT coalesce(sum(
+                function('extract', epoch from r.fin) - function('extract', epoch from r.debut)
+            ), 0) / 60
+            FROM Reservation r
+            WHERE r.salon.id = :salonId AND r.debut >= :depuis AND r.debut < :jusqua
+              AND r.statut IN :statuts
+            """)
+    Double minutesOccupees(@Param("salonId") Long salonId,
+                           @Param("depuis") Instant depuis,
+                           @Param("jusqua") Instant jusqua,
+                           @Param("statuts") Collection<StatutReservation> statuts);
+
+    /** Les prestations qui partent le mieux : nom figé, volume, montant. */
+    @Query("""
+            SELECT r.nomPrestationFige, count(r), coalesce(sum(r.prixFige), 0)
+            FROM Reservation r
+            WHERE r.salon.id = :salonId AND r.debut >= :depuis AND r.debut < :jusqua
+              AND r.statut = :statut
+            GROUP BY r.nomPrestationFige
+            ORDER BY sum(r.prixFige) DESC
+            """)
+    List<Object[]> bilanParPrestation(@Param("salonId") Long salonId,
+                                      @Param("depuis") Instant depuis,
+                                      @Param("jusqua") Instant jusqua,
+                                      @Param("statut") StatutReservation statut);
+
+    /** Qui a fait quoi, pour répartir les heures et repérer qui porte le salon. */
+    @Query("""
+            SELECT r.employe.id, count(r), coalesce(sum(r.prixFige), 0)
+            FROM Reservation r
+            WHERE r.salon.id = :salonId AND r.debut >= :depuis AND r.debut < :jusqua
+              AND r.statut = :statut AND r.employe IS NOT NULL
+            GROUP BY r.employe.id
+            ORDER BY sum(r.prixFige) DESC
+            """)
+    List<Object[]> bilanParEmploye(@Param("salonId") Long salonId,
+                                   @Param("depuis") Instant depuis,
+                                   @Param("jusqua") Instant jusqua,
+                                   @Param("statut") StatutReservation statut);
+
+    /**
+     * En ligne ou au téléphone ?
+     *
+     * C'est le chiffre qui dit si DarZin sert à quelque chose : un salon dont
+     * 80 % des rendez-vous passent encore par le téléphone n'a pas gagné de
+     * temps, et il le verra là avant de le dire en rendez-vous.
+     */
+    @Query("""
+            SELECT r.origine, count(r)
+            FROM Reservation r
+            WHERE r.salon.id = :salonId AND r.debut >= :depuis AND r.debut < :jusqua
+            GROUP BY r.origine
+            """)
+    List<Object[]> bilanParOrigine(@Param("salonId") Long salonId,
+                                   @Param("depuis") Instant depuis,
+                                   @Param("jusqua") Instant jusqua);
 }

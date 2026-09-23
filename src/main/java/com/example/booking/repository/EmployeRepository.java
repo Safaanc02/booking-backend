@@ -15,6 +15,16 @@ public interface EmployeRepository extends JpaRepository<Employe, Long> {
     List<Employe> findBySalonIdAndActifTrueOrderByOrdreAscPrenomAsc(Long salonId);
 
     /**
+     * Tous les praticiens du salon, désactivés compris.
+     *
+     * Les statistiques portent sur le passé : un rendez-vous honoré il y a
+     * deux mois par quelqu'un qui a quitté le salon reste dans les chiffres, et
+     * doit porter son nom. Ne charger que les actifs le ferait apparaître sous
+     * « Praticien retiré » alors qu'on connaît son nom.
+     */
+    List<Employe> findBySalonIdOrderByOrdreAscPrenomAsc(Long salonId);
+
+    /**
      * Rôle du compte dans ce salon, s'il en est membre actif.
      *
      * C'est la requête qui rend la délégation possible : un GESTIONNAIRE

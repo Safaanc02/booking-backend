@@ -9,19 +9,23 @@ import com.example.booking.dto.EmployeRequest;
 import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.HoraireRequest;
 import com.example.booking.dto.HoraireResponse;
+import com.example.booking.dto.StatistiquesSalon;
 import com.example.booking.model.enums.StatutReservation;
 import com.example.booking.service.FicheClientService;
 import com.example.booking.service.AgendaService;
 import com.example.booking.dto.AvisResponse;
 import com.example.booking.service.AvisService;
 import com.example.booking.service.EquipeService;
+import com.example.booking.service.StatistiquesService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -40,13 +44,19 @@ public class ProController {
     private final FicheClientService fiches;
     private final AgendaService agenda;
     private final AvisService avis;
+    private final StatistiquesService statistiques;
+    /** « Ce mois-ci » se compte à l'heure du salon, pas à celle du serveur. */
+    private final ZoneId zoneSalon;
 
     public ProController(EquipeService equipe, AgendaService agenda, AvisService avis,
-                         FicheClientService fiches) {
+                         FicheClientService fiches, StatistiquesService statistiques,
+                         @Value("${app.fuseau:Africa/Casablanca}") String fuseau) {
         this.equipe = equipe;
         this.agenda = agenda;
         this.avis = avis;
         this.fiches = fiches;
+        this.statistiques = statistiques;
+        this.zoneSalon = ZoneId.of(fuseau);
     }
 
     /**
@@ -123,6 +133,28 @@ public class ProController {
     }
 
     /* ---------- Équipe ---------- */
+
+    /**
+     * Les chiffres du salon sur une période.
+     *
+     * Par défaut le mois en cours : c'est la maille dont un gérant parle
+     * spontanément (« j'ai fait combien ce mois-ci »), et celle sur laquelle
+     * il décide d'ouvrir un dimanche ou d'embaucher.
+     */
+    @GetMapping("/salons/{salonId}/statistiques")
+    @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")
+    public ResponseEntity<StatistiquesSalon> statistiques(
+            @PathVariable Long salonId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate depuis,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate jusqua
+    ) {
+        LocalDate fin = jusqua != null ? jusqua : LocalDate.now(zoneSalon);
+        LocalDate debut = depuis != null ? depuis : fin.withDayOfMonth(1);
+        if (debut.isAfter(fin)) {
+            throw new IllegalArgumentException("La date de début est postérieure à la date de fin");
+        }
+        return ResponseEntity.ok(statistiques.pourSalon(salonId, debut, fin));
+    }
 
     @GetMapping("/salons/{salonId}/employes")
     @PreAuthorize("hasRole('ADMIN') or @permission.peutGererSalon(#salonId, authentication)")

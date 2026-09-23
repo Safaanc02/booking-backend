@@ -206,8 +206,13 @@ services:
       - api
       - keycloak
     # Le proxy est ce que voit le visiteur : sa santé est celle du service.
+    #
+    # La sonde interroge le port 2020, que le Caddyfile réserve à cet usage et
+    # que personne ne publie. Interroger le port 80 ne marche pas dès que le
+    # site porte un nom : Caddy y répond par une redirection vers HTTPS, que la
+    # sonde suit jusqu'à un certificat qui ne lui est pas destiné.
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2020/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 6

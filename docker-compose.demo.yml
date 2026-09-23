@@ -43,5 +43,10 @@ services:
     # Le fragment ajoute la route /courrier. Absent, la route n'existe pas.
     volumes:
       - ./docker/courrier.caddy:/etc/caddy/optionnel-courrier.caddy:ro
+    environment:
+      # Le fragment protège la boîte par un mot de passe : sans empreinte,
+      # Caddy refuse de démarrer plutôt que d'ouvrir la route à tout le monde.
+      COURRIER_UTILISATEUR: ${COURRIER_UTILISATEUR:-darzin}
+      COURRIER_HASH: ${COURRIER_HASH:?empreinte du mot de passe /courrier manquante — voir docker/courrier.caddy}
     depends_on:
       - mailpit

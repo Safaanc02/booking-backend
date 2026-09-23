@@ -1,11 +1,25 @@
-# Boîte aux lettres de test, exposée sous /courrier.
+# Boîte aux lettres de test, exposée sous /courrier, derrière un mot de passe.
 #
 # Monté uniquement par docker-compose.demo.yml. Mailpit capture les envois
 # sans jamais les livrer : c'est ce qui permet de suivre une invitation de
 # gérant ou un lien d'annulation de bout en bout, sans configurer le moindre
 # serveur d'envoi.
 #
-# ⚠️ Les liens d'invitation y sont lisibles en clair. Jamais en production.
+# Le mot de passe n'est pas une précaution de confort. Cette boîte contient
+# les liens d'invitation des gérants : qui la lit prend la main sur un compte
+# professionnel. Exposée en clair sur une adresse publique — ce qu'elle a été
+# jusqu'ici — elle donne le salon de quelqu'un d'autre à qui connaît l'adresse
+# du site.
+#
+# COURRIER_HASH est une empreinte bcrypt, obtenue par :
+#
+#   docker run --rm caddy:2-alpine caddy hash-password --plaintext '<mot de passe>'
+#
+# Absente, Caddy refuse de démarrer : c'est voulu. Une route qui s'ouvre
+# toute seule quand on oublie une variable finit par rester ouverte.
 handle /courrier* {
+	basic_auth {
+		{$COURRIER_UTILISATEUR:darzin} {$COURRIER_HASH}
+	}
 	reverse_proxy mailpit:8025
 }

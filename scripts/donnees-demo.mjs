@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 /**
  * Jeu de données de démonstration.
  *
@@ -141,6 +142,20 @@ const compteProfessionnel = async ({ identifiant, prenom, nom, email }) => {
 }
 
 const ADMIN = 'admin', PRO = 'pro1', CLIENT = 'client1'
+
+/**
+ * L'adresse que le realm donne à un compte de démonstration.
+ *
+ * Lue dans le fichier d'import plutôt que recopiée : les deux se sont déjà
+ * désaccordés une fois, et rien ne l'a signalé avant un 403 sans explication.
+ */
+const emailDuRealm = (identifiant) => {
+  const realm = JSON.parse(readFileSync(
+    new URL('../keycloak/booking-realm-realm.json', import.meta.url), 'utf8'))
+  const compte = (realm.users ?? []).find((u) => u.username === identifiant)
+  if (!compte?.email) throw new Error(`Le realm ne déclare pas « ${identifiant} »`)
+  return compte.email
+}
 bleu('→ Authentification')
 const t = {
   [ADMIN]: await jeton(ADMIN),
@@ -164,7 +179,17 @@ const installer = async ({ fiche, prestations, equipe, valider = true, proprieta
   // Le compte est créé ici avec un mot de passe connu — les suites de
   // vérification se connectent en tant que ce professionnel. Le référencement
   // le retrouvera par son adresse au lieu d'en créer un second.
-  const gerant = proprietaire ?? { identifiant: PRO, email: 'pro1@booking.ma',
+  /*
+   * L'adresse doit être celle que le realm donne à ce compte.
+   *
+   * Elle était écrite en dur en `@booking.ma`, restée du nom d'avant. Sur un
+   * realm fraîchement importé — donc en `@darzin.ma` — le référencement ne
+   * retrouvait pas le compte et en créait un second sous l'autre adresse. Le
+   * salon appartenait alors à ce doublon, tandis que le script continuait
+   * avec le jeton du premier : le serveur refusait, à raison, et l'erreur
+   * ne disait rien de la cause.
+   */
+  const gerant = proprietaire ?? { identifiant: PRO, email: emailDuRealm(PRO),
                                    prenom: 'Karim', nom: 'Benali' }
   const tokenPro = proprietaire ? await compteProfessionnel(proprietaire) : t[PRO]
 

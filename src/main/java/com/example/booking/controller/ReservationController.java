@@ -1,17 +1,20 @@
 package com.example.booking.controller;
 
 import com.example.booking.dto.CreateReservationRequest;
+import com.example.booking.dto.CreneauDisponible;
 import com.example.booking.dto.ReservationResponse;
 import com.example.booking.dto.UpdateReservationRequest;
 import com.example.booking.service.ReservationService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -55,6 +58,23 @@ public class ReservationController {
     @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
     public ResponseEntity<ReservationResponse> create(@Valid @RequestBody CreateReservationRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.create(req));
+    }
+
+    /**
+     * Les créneaux libres pour déplacer ce rendez-vous, un jour donné.
+     *
+     * Séparée de la route publique des disponibilités : celle-ci fait
+     * abstraction du rendez-vous qu'on déplace, ce qui n'a de sens que pour
+     * son propriétaire — et ce qui, ouvert à tous, permettrait de deviner
+     * quels identifiants de réservation existent.
+     */
+    @GetMapping("/{id}/creneaux")
+    @PreAuthorize("hasAnyRole('CLIENT','PRO','ADMIN')")
+    public ResponseEntity<List<CreneauDisponible>> creneauxPourDeplacement(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return ResponseEntity.ok(reservationService.creneauxPourDeplacement(id, date));
     }
 
     @PutMapping("/{id}")

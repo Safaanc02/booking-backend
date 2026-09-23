@@ -26,4 +26,10 @@ public class NotificationListener {
     public void surReservationCreee(ReservationCreee evenement) {
         notifications.confirmerPourReservation(evenement.reservationId());
     }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void surReservationDeplacee(ReservationDeplacee evenement) {
+        notifications.deplacerPourReservation(evenement.reservationId(), evenement.ancienDebut());
+    }
 }

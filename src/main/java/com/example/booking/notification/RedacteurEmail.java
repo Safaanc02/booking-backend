@@ -94,6 +94,81 @@ public class RedacteurEmail {
         return message(r.getSalon().getEmail(), sujet, ctx, texte);
     }
 
+    /**
+     * Au client, après qu'il a déplacé son rendez-vous.
+     *
+     * L'ancienne heure figure dans le message, barrée. Sans elle, le courriel
+     * ressemble trait pour trait à la confirmation d'origine : on le classe
+     * sans le lire, et l'on se présente à l'heure d'avant — le déplacement
+     * aurait alors produit l'absence qu'il servait à éviter.
+     */
+    public CanalNotification.Message deplacementClient(Reservation r, Instant ancienDebut) {
+        Context ctx = contexteCommun(r);
+        ctx.setVariable("contenu", "email/deplacement-client :: contenu");
+        ctx.setVariable("delaiAnnulation", r.getSalon().getDelaiAnnulationHeures());
+        ctx.setVariable("ancienneDateHeure", quand(ancienDebut));
+
+        String sujet = "Rendez-vous déplacé — " + r.getSalon().getNom() + ", " + quand(r);
+        String texte = """
+                Bonjour %s,
+
+                Votre rendez-vous chez %s est déplacé.
+
+                Ancienne heure : %s
+                Nouvelle heure : %s
+
+                Prestation : %s
+                Avec       : %s
+                À régler   : %s
+
+                %s
+                %s
+
+                Annulation gratuite jusqu'à %d h avant le rendez-vous.
+                Annuler en un clic : %s
+                Gérer ma réservation : %s
+                """.formatted(
+                nomClient(r), r.getSalon().getNom(),
+                quand(ancienDebut), quand(r),
+                r.getNomPrestationFige(), nomEmploye(r), prix(r.getPrixFige()),
+                nullVersVide(r.getSalon().getAdresse()), telephoneLisible(r.getSalon().getTelephone()),
+                r.getSalon().getDelaiAnnulationHeures(),
+                urlPublique + "/annuler?token=" + jetons.creer(r),
+                urlPublique + "/compte");
+
+        return message(r.getClient().getEmail(), sujet, ctx, texte);
+    }
+
+    /** Au salon : un créneau qui bouge sans que personne ne le dise, c'est une
+     *  cliente qu'on attend pendant qu'elle est ailleurs. */
+    public CanalNotification.Message deplacementSalon(Reservation r, Instant ancienDebut) {
+        Context ctx = contexteCommun(r);
+        ctx.setVariable("contenu", "email/deplacement-salon :: contenu");
+        ctx.setVariable("telephoneClient", telephoneLisible(r.telephoneClient()));
+        ctx.setVariable("ancienneDateHeure", quand(ancienDebut));
+        ctx.setVariable("lienAgenda", urlPublique + "/pro/salon/" + r.getSalon().getId());
+
+        String sujet = "Rendez-vous déplacé — " + quand(r) + " (" + nomClient(r) + ")";
+        String texte = """
+                %s a déplacé son rendez-vous chez %s.
+
+                Ancienne heure : %s
+                Nouvelle heure : %s
+
+                Prestation : %s
+                Praticien  : %s
+                Téléphone  : %s
+
+                Agenda : %s
+                """.formatted(
+                nomClient(r), r.getSalon().getNom(),
+                quand(ancienDebut), quand(r),
+                r.getNomPrestationFige(), nomEmploye(r), telephoneLisible(r.telephoneClient()),
+                urlPublique + "/pro/salon/" + r.getSalon().getId());
+
+        return message(r.getSalon().getEmail(), sujet, ctx, texte);
+    }
+
     public CanalNotification.Message rappelClient(Reservation r) {
         Context ctx = contexteCommun(r);
         ctx.setVariable("contenu", "email/rappel-client :: contenu");
@@ -176,7 +251,12 @@ public class RedacteurEmail {
     }
 
     private String quand(Reservation r) {
-        return JOUR_HEURE.format(Instant.ofEpochMilli(r.getDebut().toEpochMilli()).atZone(zone));
+        return quand(r.getDebut());
+    }
+
+    /** La même mise en forme pour un instant seul — l'heure d'avant, dans un déplacement. */
+    private String quand(Instant moment) {
+        return JOUR_HEURE.format(moment.atZone(zone));
     }
 
     private String prix(BigDecimal montant) {

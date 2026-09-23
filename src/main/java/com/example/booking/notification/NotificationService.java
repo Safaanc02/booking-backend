@@ -68,6 +68,30 @@ public class NotificationService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void deplacerPourReservation(Long reservationId, java.time.Instant ancienDebut) {
+        reservationRepository.findById(reservationId)
+                .ifPresent(r -> signalerDeplacement(r, ancienDebut));
+    }
+
+    /**
+     * Prévient les deux parties qu'un rendez-vous a changé d'heure.
+     *
+     * Le salon est averti même s'il n'a rien fait : c'est lui qui organise sa
+     * journée, et un créneau qui bouge sans que personne ne le dise, c'est une
+     * cliente qu'on attend pendant qu'elle est ailleurs.
+     */
+    public void signalerDeplacement(Reservation r, java.time.Instant ancienDebut) {
+        if (r.getClient() != null && renseigne(r.getClient().getEmail())) {
+            envoyer(r, TypeNotification.DEPLACEMENT_CLIENT, r.getClient().getEmail(),
+                    () -> redacteur.deplacementClient(r, ancienDebut));
+        }
+        if (r.getSalon() != null && renseigne(r.getSalon().getEmail())) {
+            envoyer(r, TypeNotification.DEPLACEMENT_SALON, r.getSalon().getEmail(),
+                    () -> redacteur.deplacementSalon(r, ancienDebut));
+        }
+    }
+
     public void rappeler(Reservation r) {
         if (r.getClient() != null && renseigne(r.getClient().getEmail())) {
             envoyer(r, TypeNotification.RAPPEL_CLIENT, r.getClient().getEmail(),

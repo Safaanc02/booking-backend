@@ -90,6 +90,22 @@ public class DisponibiliteService {
      * @param employeId praticien souhaité, ou null pour « sans préférence »
      */
     public List<CreneauDisponible> creneaux(Long salonId, Long prestationId, LocalDate date, Long employeId) {
+        return creneaux(salonId, prestationId, date, employeId, null);
+    }
+
+    /**
+     * Les mêmes créneaux, en faisant abstraction d'un rendez-vous existant.
+     *
+     * Sert au déplacement. Sans cela, un client qui veut avancer son rendez-vous
+     * de 14 h à 14 h 30 se voit refuser le créneau — par son propre rendez-vous,
+     * qui occupe encore la place qu'il cherche à quitter. Il annulerait alors,
+     * et souvent ne reprendrait pas : un rendez-vous perdu pour le salon là où
+     * un décalage d'une demi-heure suffisait.
+     *
+     * @param ignorerReservationId rendez-vous à ne pas compter comme occupé, ou null
+     */
+    public List<CreneauDisponible> creneaux(Long salonId, Long prestationId, LocalDate date,
+                                            Long employeId, Long ignorerReservationId) {
         Prestation prestation = prestationRepository.findById(prestationId)
                 .orElseThrow(() -> new NoSuchElementException("Prestation introuvable : " + prestationId));
 
@@ -132,7 +148,8 @@ public class DisponibiliteService {
                 continue; // ne travaille pas ce jour-là
             }
 
-            List<Intervalle> occupe = occupation(employe.getId(), salonId, bornesDebut, bornesFin);
+            List<Intervalle> occupe = occupation(
+                    employe.getId(), salonId, bornesDebut, bornesFin, ignorerReservationId);
 
             for (Plage plage : plages) {
                 LocalTime t = plage.debut();
@@ -203,11 +220,15 @@ public class DisponibiliteService {
     }
 
     /** Réservations bloquantes et absences, fusionnées en intervalles occupés. */
-    private List<Intervalle> occupation(Long employeId, Long salonId, Instant debut, Instant fin) {
+    private List<Intervalle> occupation(Long employeId, Long salonId, Instant debut, Instant fin,
+                                        Long ignorerReservationId) {
         List<Intervalle> occupe = new ArrayList<>();
 
         for (Reservation r : reservationRepository.occupationEmploye(
                 employeId, StatutReservation.BLOQUANTS, debut, fin)) {
+            if (ignorerReservationId != null && ignorerReservationId.equals(r.getId())) {
+                continue;
+            }
             occupe.add(new Intervalle(r.getDebut(), r.getFin()));
         }
         for (Absence a : absenceRepository.chevauchant(employeId, salonId, debut, fin)) {

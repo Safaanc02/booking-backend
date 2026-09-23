@@ -17,5 +17,15 @@ public enum TypeNotification {
      * note moyenne est ce qui fait choisir un salon plutôt qu'un autre — un
      * réseau sans avis est un annuaire.
      */
-    DEMANDE_AVIS
+    DEMANDE_AVIS,
+    /**
+     * Au client, quand il déplace lui-même son rendez-vous.
+     *
+     * Sans nouvel écrit, il garde en tête l'heure d'avant — et le déplacement
+     * produit l'absence qu'il était censé éviter.
+     */
+    DEPLACEMENT_CLIENT,
+    /** Au salon : un créneau qui bouge sans que personne ne le dise, c'est une
+     *  cliente qu'on attend pendant qu'elle est ailleurs. */
+    DEPLACEMENT_SALON
 }

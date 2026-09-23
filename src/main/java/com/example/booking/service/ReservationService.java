@@ -16,6 +16,7 @@ import com.example.booking.model.enums.StatutReservation;
 import com.example.booking.dto.ApercuAnnulation;
 import com.example.booking.notification.JetonAnnulation;
 import com.example.booking.notification.ReservationCreee;
+import com.example.booking.notification.ReservationDeplacee;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.AvisRepository;
 import com.example.booking.repository.EmployeRepository;
@@ -123,6 +124,12 @@ public class ReservationService {
         }
 
         Employe employe = resoudreEmploye(req, salon.getId());
+        // Même contrôle qu'au déplacement. Sans lui, préciser un praticien
+        // suffisait à sauter la vérification des horaires : la base acceptait
+        // un rendez-vous un jour de fermeture, et le salon le découvrait le
+        // matin même.
+        verifierCreneauOffert(salon.getId(), prestation, req.debut(), employe.getId(), null);
+
         Duration duree = dureeEffective(employe.getId(), prestation);
         Instant fin = req.debut().plus(duree);
 
@@ -147,21 +154,119 @@ public class ReservationService {
         return ReservationMapper.toResponse(enregistree);
     }
 
+    /**
+     * Déplacement d'un rendez-vous par son client.
+     *
+     * Cette route contournait tous les garde-fous que l'annulation applique :
+     * on pouvait déplacer un rendez-vous déjà annulé, le poser dans le passé,
+     * le mettre à une heure où le salon est fermé ou le praticien en congé, et
+     * surtout esquiver le préavis d'annulation — il suffisait de déplacer au
+     * mois suivant ce qu'on n'avait plus le droit d'annuler. Rien de tout cela
+     * ne se voyait tant que l'interface ne proposait pas le bouton.
+     *
+     * Le déplacement obéit donc exactement aux mêmes règles que l'annulation,
+     * et à une de plus : le nouveau créneau doit être un créneau réellement
+     * offert, pas seulement une heure que la base accepte.
+     */
     public ReservationResponse update(Long id, UpdateReservationRequest req) {
         Reservation r = charger(id);
         verifierAcces(r);
+
+        if (!r.getStatut().bloqueLeCreneau()) {
+            throw new IllegalStateException("Cette réservation n'est plus active");
+        }
+
+        // Le même préavis que pour annuler. Sans cette règle, le préavis ne
+        // vaut rien : on déplace au lieu d'annuler, et le salon se retrouve
+        // avec un trou qu'il ne pouvait plus combler.
+        Instant limite = r.getDebut().minus(Duration.ofHours(r.getSalon().getDelaiAnnulationHeures()));
+        if (Instant.now().isAfter(limite) && !currentUser.isAdmin()) {
+            throw new IllegalStateException(
+                    "Le déplacement n'est plus possible : le délai est de "
+                    + r.getSalon().getDelaiAnnulationHeures() + " h avant le rendez-vous");
+        }
 
         Employe employe = req.employeId() != null
                 ? employeRepository.findById(req.employeId())
                     .orElseThrow(() -> new NoSuchElementException("Praticien introuvable : " + req.employeId()))
                 : r.getEmploye();
 
+        if (employe == null || !employe.getSalon().getId().equals(r.getSalon().getId())) {
+            throw new NoSuchElementException("Ce praticien n'appartient pas à ce salon");
+        }
+
+        verifierCreneauOffert(r.getSalon().getId(), r.getPrestation(), req.debut(), employe.getId(), r.getId());
+
+        Instant ancienDebut = r.getDebut();
         Duration duree = dureeEffective(employe.getId(), r.getPrestation());
         r.setEmploye(employe);
         r.setDebut(req.debut());
         r.setFin(req.debut().plus(duree));
 
-        return ReservationMapper.toResponse(enregistrer(r));
+        Reservation enregistree = enregistrer(r);
+        // Les deux parties doivent recevoir la nouvelle heure par écrit : un
+        // déplacement que personne ne confirme produit l'absence qu'il évitait.
+        evenements.publishEvent(new ReservationDeplacee(enregistree.getId(), ancienDebut));
+        return ReservationMapper.toResponse(enregistree);
+    }
+
+    /**
+     * Le créneau demandé est-il réellement proposé ?
+     *
+     * La contrainte d'exclusion en base empêche deux rendez-vous de se
+     * chevaucher, et c'est elle qui protège du double clic. Mais elle ne dit
+     * rien des horaires d'ouverture, des congés, ni du fait que ce praticien-là
+     * réalise cette prestation-là : une requête forgée pouvait poser un
+     * rendez-vous à trois heures du matin, un jour de fermeture, chez quelqu'un
+     * en vacances. La base l'acceptait, l'agenda l'affichait, et le salon le
+     * découvrait le matin même.
+     *
+     * On interroge donc la même liste de créneaux que celle proposée au
+     * visiteur. Une heure absente de cette liste n'a pas à être acceptée.
+     *
+     * @param ignorerReservationId le rendez-vous déplacé, qui ne doit pas se
+     *                             bloquer lui-même quand il se décale de peu
+     */
+    private void verifierCreneauOffert(Long salonId, Prestation prestation, Instant debut,
+                                       Long employeId, Long ignorerReservationId) {
+        LocalDate date = LocalDate.ofInstant(debut, disponibilites.zone());
+        LocalTime heure = LocalTime.ofInstant(debut, disponibilites.zone());
+
+        boolean offert = disponibilites
+                .creneaux(salonId, prestation.getId(), date, employeId, ignorerReservationId)
+                .stream()
+                .anyMatch(c -> c.heure().equals(heure) && c.employesDisponibles().contains(employeId));
+
+        if (!offert) {
+            throw new IllegalStateException("Ce créneau n'est pas disponible");
+        }
+    }
+
+    /**
+     * Les créneaux où ce rendez-vous pourrait être déplacé, un jour donné.
+     *
+     * Une route à part, et authentifiée, plutôt qu'un paramètre de plus sur la
+     * route publique des disponibilités. Faire ignorer un rendez-vous à la
+     * route publique reviendrait à laisser n'importe qui deviner, en comparant
+     * les créneaux rendus, quels identifiants de réservation existent — pour
+     * un confort d'implémentation.
+     *
+     * Ici, l'appelant doit être le propriétaire du rendez-vous, et c'est le
+     * sien qu'on rend transparent.
+     */
+    @Transactional(readOnly = true)
+    public List<CreneauDisponible> creneauxPourDeplacement(Long id, LocalDate date) {
+        Reservation r = charger(id);
+        verifierAcces(r);
+
+        if (!r.getStatut().bloqueLeCreneau()) {
+            throw new IllegalStateException("Cette réservation n'est plus active");
+        }
+
+        return disponibilites.creneaux(
+                r.getSalon().getId(), r.getPrestation().getId(), date,
+                r.getEmploye() != null ? r.getEmploye().getId() : null,
+                r.getId());
     }
 
     /** Annulation par le client, dans le respect du délai fixé par le salon. */

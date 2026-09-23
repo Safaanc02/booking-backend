@@ -1,0 +1,35 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<body>
+<div th:fragment="contenu">
+  <h1 style="margin:0 0 8px;font-size:20px;">Un rendez-vous a été déplacé</h1>
+  <p style="margin:0 0 20px;color:#57534e;line-height:1.6;">
+    <strong th:text="${client}">Salma Bennani</strong> a déplacé son rendez-vous chez
+    <span th:text="${salon}">Riad Nour</span>.
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="background:#faf8f6;border-radius:12px;padding:16px;">
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Ancienne heure</td>
+        <td style="padding:4px 0;text-align:right;color:#a8a29e;text-decoration:line-through;"
+            th:text="${ancienneDateHeure}">jeudi 3 septembre à 14:00</td></tr>
+    <tr><td style="padding:8px 0 4px;color:#78716c;font-size:14px;">Nouvelle heure</td>
+        <td style="padding:8px 0 4px;text-align:right;font-weight:700;font-size:16px;"
+            th:text="${dateHeure}">samedi 5 septembre à 10:30</td></tr>
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Prestation</td>
+        <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${prestation}">Coupe femme</td></tr>
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Praticien</td>
+        <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${employe}">Sofia</td></tr>
+    <tr><td style="padding:4px 0;color:#78716c;font-size:14px;">Téléphone</td>
+        <td style="padding:4px 0;text-align:right;font-weight:600;" th:text="${telephoneClient}">06 61 23 45 67</td></tr>
+  </table>
+
+  <p style="margin:20px 0 0;">
+    <a th:href="${lienAgenda}"
+       style="display:inline-block;background:#a15030;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;">
+      Ouvrir l'agenda
+    </a>
+  </p>
+</div>
+</body>
+</html>

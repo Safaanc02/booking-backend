@@ -25,6 +25,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 /** Agenda du salon et saisie des rendez-vous pris hors ligne. */
@@ -69,8 +72,9 @@ public class AgendaService {
         Instant debut = date.atStartOfDay(zone).toInstant();
         Instant fin = date.plusDays(Math.max(1, jours)).atStartOfDay(zone).toInstant();
 
+        Map<String, Integer> absences = absencesDuSalon(salonId);
         return reservationRepository.agenda(salonId, debut, fin).stream()
-                .map(this::toResponse)
+                .map((r) -> toResponse(r, absences))
                 .toList();
     }
 
@@ -134,8 +138,9 @@ public class AgendaService {
         Instant debut = date.atStartOfDay(zone).toInstant();
         Instant fin = date.plusDays(1).atStartOfDay(zone).toInstant();
 
+        Map<String, Integer> absences = absencesDesSalons(salons);
         return reservationRepository.journeeDeSalons(salons, debut, fin).stream()
-                .map(this::toResponse)
+                .map((r) -> toResponse(r, absences))
                 .toList();
     }
 
@@ -245,6 +250,19 @@ public class AgendaService {
     }
 
     private AgendaResponse toResponse(Reservation r) {
+        return toResponse(r, null);
+    }
+
+    /**
+     * La même conversion, en sachant combien de fois chaque cliente a manqué.
+     *
+     * Le compteur arrive en carte plutôt que d'être interrogé ligne par ligne :
+     * une journée chargée compte quarante rendez-vous, et quarante
+     * allers-retours en base seraient payés par le gérant en attente devant
+     * son écran.
+     */
+    private AgendaResponse toResponse(Reservation r, Map<String, Integer> absences) {
+        Integer manquees = absences == null ? null : absences.getOrDefault(cleClient(r), 0);
         return new AgendaResponse(
                 r.getId(),
                 r.getSalon() != null ? r.getSalon().getId() : null,
@@ -256,6 +274,47 @@ public class AgendaService {
                 r.getNomPrestationFige(),
                 r.getEmploye() != null ? r.getEmploye().getId() : null,
                 r.getEmploye() != null ? r.getEmploye().nomComplet() : null,
-                r.getPrixFige(), r.getNoteClient());
+                r.getPrixFige(), r.getNoteClient(),
+                manquees);
+    }
+
+    /**
+     * L'identité d'une cliente pour un salon.
+     *
+     * La même clé que celle des fiches clients : le numéro ramené à la forme
+     * nationale, ou « compte:42 » à défaut. Deux identités différentes pour la
+     * même personne donneraient un compteur à zéro là où le salon en attend
+     * trois — et c'est sur ce compteur qu'il décide de rappeler.
+     *
+     * La normalisation reproduit celle de la base (V16) : on ne garde que les
+     * chiffres, et un numéro au format international marocain redevient
+     * national.
+     */
+    private String cleClient(Reservation r) {
+        String tel = r.telephoneClient();
+        if (tel != null && !tel.isBlank()) {
+            String chiffres = tel.replaceAll("\\D", "");
+            if (chiffres.startsWith("212")) chiffres = "0" + chiffres.substring(3);
+            if (!chiffres.isBlank()) return chiffres;
+        }
+        return r.getClient() != null ? "compte:" + r.getClient().getId() : null;
+    }
+
+    /** Les absences déjà constatées dans ce salon, par cliente. */
+    private Map<String, Integer> absencesDuSalon(Long salonId) {
+        Map<String, Integer> par = new HashMap<>();
+        for (Object[] l : reservationRepository.absencesParClient(salonId)) {
+            if (l[0] != null) par.put((String) l[0], ((Number) l[1]).intValue());
+        }
+        return par;
+    }
+
+    /** Les absences de plusieurs salons à la fois, pour la journée d'un gérant. */
+    private Map<String, Integer> absencesDesSalons(Collection<Long> salonIds) {
+        Map<String, Integer> par = new HashMap<>();
+        for (Long id : salonIds) {
+            absencesDuSalon(id).forEach((cle, n) -> par.merge(cle, n, Integer::sum));
+        }
+        return par;
     }
 }

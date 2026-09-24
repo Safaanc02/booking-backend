@@ -247,6 +247,34 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     boolean existsByEmployeIdAndStatutInAndDebutLessThanAndFinGreaterThan(
             Long employeId, Collection<StatutReservation> statuts, Instant fin, Instant debut);
 
+    /**
+     * Combien de fois chaque cliente de ce salon n'est pas venue.
+     *
+     * Rendue en une requête pour tout l'agenda, et non une par rendez-vous :
+     * une journée chargée compte quarante lignes, et quarante allers-retours
+     * pour afficher un compteur seraient payés par le gérant en attente devant
+     * son écran.
+     *
+     * La clé est la même que celle des fiches clients : le numéro ramené à la
+     * forme nationale, ou « compte:42 » à défaut. Deux identités différentes
+     * pour la même personne donneraient un compteur à zéro là où le salon en
+     * attend trois — et c'est sur ce compteur qu'il décidera de rappeler, ou
+     * de ne pas garder le créneau.
+     */
+    @Query(value = """
+            SELECT COALESCE(
+                       normaliser_telephone(r.client_telephone_libre),
+                       normaliser_telephone(u.telephone),
+                       'compte:' || r.client_id
+                   ) AS cle,
+                   count(*) AS absences
+            FROM reservation r
+            LEFT JOIN users u ON u.id = r.client_id
+            WHERE r.salon_id = :salonId AND r.statut = 'ABSENT'
+            GROUP BY 1
+            """, nativeQuery = true)
+    List<Object[]> absencesParClient(@Param("salonId") Long salonId);
+
     /* ---------- Les chiffres du salon ---------- */
     /*
      * Cinq requêtes d'agrégation plutôt qu'un chargement des réservations

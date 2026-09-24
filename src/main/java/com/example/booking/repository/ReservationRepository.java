@@ -266,19 +266,27 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                   @Param("depuis") Instant depuis,
                                   @Param("jusqua") Instant jusqua);
 
-    /** Le temps réellement occupé, en minutes — pour le taux de remplissage. */
-    @Query("""
-            SELECT coalesce(sum(
-                function('extract', epoch from r.fin) - function('extract', epoch from r.debut)
-            ), 0) / 60
-            FROM Reservation r
-            WHERE r.salon.id = :salonId AND r.debut >= :depuis AND r.debut < :jusqua
-              AND r.statut IN :statuts
-            """)
+    /**
+     * Le temps réellement occupé, en minutes — pour le taux de remplissage.
+     *
+     * En SQL natif, et non en HQL. Une différence entre deux instants n'a pas
+     * de forme portable en HQL : `extract(epoch from …)` n'y est pas une
+     * fonction que l'on peut appeler, et la requête ne se révèle invalide
+     * qu'au démarrage de l'application — la compilation, elle, passe.
+     *
+     * Les statuts arrivent en chaînes puisqu'ils sont stockés ainsi.
+     */
+    @Query(value = """
+            SELECT coalesce(sum(extract(epoch FROM (r.fin - r.debut))), 0) / 60
+            FROM reservation r
+            WHERE r.salon_id = :salonId
+              AND r.debut >= :depuis AND r.debut < :jusqua
+              AND r.statut IN (:statuts)
+            """, nativeQuery = true)
     Double minutesOccupees(@Param("salonId") Long salonId,
                            @Param("depuis") Instant depuis,
                            @Param("jusqua") Instant jusqua,
-                           @Param("statuts") Collection<StatutReservation> statuts);
+                           @Param("statuts") Collection<String> statuts);
 
     /** Les prestations qui partent le mieux : nom figé, volume, montant. */
     @Query("""

@@ -11,6 +11,7 @@ import com.example.booking.model.enums.SalonStatut;
 import com.example.booking.model.enums.StatutAvis;
 import com.example.booking.model.enums.StatutDemandeDemo;
 import com.example.booking.notification.DemandeAvisPlanificateur;
+import com.example.booking.notification.DiagnosticCourriel;
 import com.example.booking.notification.RappelPlanificateur;
 import com.example.booking.service.TableauDeBordService;
 import com.example.booking.service.AvisService;
@@ -46,6 +47,7 @@ public class AdminController {
     private final ReferencementService referencement;
     private final DemandeDemoService demandes;
     private final CurrentUserService utilisateurCourant;
+    private final DiagnosticCourriel diagnostic;
 
     public AdminController(SalonService salonService,
                            RappelPlanificateur rappels,
@@ -54,7 +56,8 @@ public class AdminController {
                            AvisService avis,
                            ReferencementService referencement,
                            DemandeDemoService demandes,
-                           CurrentUserService utilisateurCourant) {
+                           CurrentUserService utilisateurCourant,
+                           DiagnosticCourriel diagnostic) {
         this.salonService = salonService;
         this.rappels = rappels;
         this.demandesAvis = demandesAvis;
@@ -63,6 +66,7 @@ public class AdminController {
         this.referencement = referencement;
         this.demandes = demandes;
         this.utilisateurCourant = utilisateurCourant;
+        this.diagnostic = diagnostic;
     }
 
     /* ---------- Demandes de démonstration ---------- */
@@ -151,6 +155,24 @@ public class AdminController {
     @PostMapping("/demandes-avis")
     public ResponseEntity<java.util.Map<String, Integer>> relancerDemandesAvis() {
         return ResponseEntity.ok(java.util.Map.of("declenches", demandesAvis.declencher()));
+    }
+
+    /**
+     * Envoie un courriel d'essai, et dit ce qui s'est passé.
+     *
+     * Les notifications sont volontairement asynchrones : une panne d'envoi ne
+     * fait jamais échouer une réservation, elle se contente d'une ligne dans
+     * les journaux. Le revers, c'est que plus rien ne part pendant trois jours
+     * sans que rien à l'écran ne le dise. Cette route répond en face.
+     *
+     * Elle distingue surtout la boîte de test d'un vrai serveur d'envoi —
+     * sinon le test « passe » alors que le message n'ira nulle part.
+     */
+    @PostMapping("/essai-courriel")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DiagnosticCourriel.Resultat> essaiCourriel(
+            @RequestParam String destinataire) {
+        return ResponseEntity.ok(diagnostic.essayer(destinataire));
     }
 
     /**

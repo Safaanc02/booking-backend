@@ -40,14 +40,15 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class StatistiquesService {
 
-    /** Ce qui compte comme « pas encore joué » : promis, mais pas réalisé. */
-    private static final Set<StatutReservation> EN_COURS =
-            Set.of(StatutReservation.EN_ATTENTE, StatutReservation.CONFIRMEE);
-
-    /** Ce qui occupe une place dans l'agenda, honoré ou non. */
-    private static final Set<StatutReservation> OCCUPANTS =
-            Set.of(StatutReservation.EN_ATTENTE, StatutReservation.CONFIRMEE,
-                   StatutReservation.HONOREE, StatutReservation.ABSENT);
+    /**
+     * Ce qui occupe une place dans l'agenda, honoré ou non.
+     *
+     * En chaînes : la requête qui les consomme est en SQL natif, où le statut
+     * est la colonne telle qu'elle est stockée.
+     */
+    private static final Set<String> OCCUPANTS = Set.of(
+            StatutReservation.EN_ATTENTE.name(), StatutReservation.CONFIRMEE.name(),
+            StatutReservation.HONOREE.name(), StatutReservation.ABSENT.name());
 
     private final ReservationRepository reservations;
     private final HoraireOuvertureRepository horaires;

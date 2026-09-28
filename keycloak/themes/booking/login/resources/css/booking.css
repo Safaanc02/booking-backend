@@ -85,101 +85,70 @@
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
-  padding: 26px 20px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 32px 24px;
 
   /*
-   * Le ciel de Casablanca, à l'heure qu'il est.
+   * Fond fixe, et non plus un ciel qui change d'heure en heure.
    *
-   * Ces deux teintes sont réécrites par ciel.js selon l'heure réelle au
-   * Maroc — aube rosée, plein jour doré, crépuscule cuivré, nuit profonde.
-   * Les valeurs ci-dessous sont celles du soir : sans JavaScript, le panneau
-   * reste un dégradé chaud et lisible, jamais une zone vide.
+   * Le ciel mouvant obligeait à voiler tout le bas du panneau pour que le
+   * texte reste lisible quoi qu'il se passe derrière : le contraste était
+   * mesuré au centième, et un simple réglage de l'astre pouvait le faire
+   * repasser sous le seuil. Un fond stable rend la question sans objet — et
+   * ce qui bouge désormais est dans le dessin, là où on le regarde.
    *
-   * Ce n'est pas de l'ornement. L'accueil annonce déjà l'heure marocaine et
-   * ce qu'elle implique — « les salons sont fermés, la réservation non ». Le
-   * panneau le montre au lieu de l'écrire, sur le premier écran que voit un
-   * gérant à qui l'on vient de confier ses accès.
+   * L'aubergine de la marque, du 900 vers l'encre. Le blanc y tient à 14:1.
    */
-  --ciel-haut: #6b3320;
-  --ciel-bas: #3a1d13;
-  background: linear-gradient(170deg, var(--ciel-haut) 0%, var(--ciel-bas) 100%);
-  transition: --ciel-haut 1.2s linear, --ciel-bas 1.2s linear;
+  background: linear-gradient(168deg, var(--brand-900) 0%, #2a1024 62%, #1d0b18 100%);
 }
 
-/*
- * Le voile.
- *
- * Le ciel change toute la journée ; le texte posé dessus, non. À l'aube,
- * l'astre se lève précisément derrière la marque et l'accroche, et le
- * contraste du blanc y tombait sous 3:1 — illisible à l'heure, justement, où
- * un gérant ouvre sa journée.
- *
- * Plutôt que d'interdire à l'astre cette portion du ciel — ce qui aurait
- * rendu sa course fausse — le bas du panneau est voilé d'un dégradé sombre.
- * Le contraste devient indépendant de l'heure : quoi qu'il se passe derrière,
- * le texte reste lisible.
- *
- * Les deux valeurs sont mesurées, pas choisies : à 0,50 la ligne d'heure
- * tombait à 2,96:1 en pleine matinée, et à 0,62 avec la borne à 78 % elle
- * repassait à 4,53:1 à l'aube — trois centièmes au-dessus du seuil, donc à la
- * merci du moindre réglage. Le voile atteint désormais sa pleine force dès
- * les deux tiers de sa hauteur, là où se trouve justement cette ligne.
- *
- * `z-index: 1` le place au-dessus de l'astre, qui n'en a aucun ; la marque
- * passe à 2 pour rester au-dessus de lui.
- */
-.b-header::before {
-  content: "";
-  position: absolute;
-  inset: 38% 0 0;
+/* ------------------------------------------------------------------ */
+/* La scène                                                           */
+/*                                                                    */
+/* Un salon dessiné, et un rendez-vous posé devant : le miroir et ses  */
+/* ampoules disent le métier, la carte de créneaux dit le produit.     */
+/*                                                                    */
+/* Ce que remplaçait l'ancien panneau — un disque flou censé être une  */
+/* lune — ne disait ni l'un ni l'autre. Vu petit, il se lisait comme   */
+/* une tache sur l'écran, et il passait derrière le texte sur          */
+/* téléphone.                                                          */
+/*                                                                    */
+/* Dessiné en SVG plutôt que photographié : le catalogue ne compte     */
+/* aucune photo, et une image de banque d'images achetée montrerait un */
+/* salon qui n'est pas chez nous — ce qui est exactement la promesse   */
+/* qu'on ne veut pas faire à un gérant.                                */
+/* ------------------------------------------------------------------ */
+.b-scene {
+  position: relative;
   z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(to bottom,
-              rgba(12, 10, 9, 0) 0%, rgba(12, 10, 9, 0.66) 66%);
+  align-self: center;
+  width: 100%;
+  max-width: 300px;
+  /* La scène occupe la place qui reste une fois la marque posée, sans
+     jamais la pousser hors de l'écran. */
+  margin: auto 0;
 }
+.b-scene svg { display: block; width: 100%; height: auto; }
 
 /*
- * L'astre, posé par ciel.js.
+ * Les ampoules du miroir s'allument la nuit.
  *
- * Soleil le jour, lune la nuit : le même disque, refroidi, pâli et réduit.
- * Sa hauteur suit la course du jour, et la nuit celle d'un second arc plus
- * bas — il ne passe jamais sous l'horizon, car un panneau vide à 2 h du
- * matin se lit comme un écran cassé, pas comme une nuit.
- *
- * Toute sa forme tient dans un dégradé radial : un cœur net, puis un halo
- * qui se dissout. Ses trois bornes sont réglables, car un soleil et une lune
- * ne se diluent pas pareil — le soleil de midi brûle à travers l'air chaud
- * et déborde, la lune a un bord franc. Sans ce resserrement nocturne, elle
- * n'était qu'une tache grise.
- *
- * Le bord est la teinte du halo à opacité nulle et non `transparent`, qui
- * vaut du noir transparent et laissait un liseré gris dans le fondu.
- *
- * `--astre-x/y` est sa position, `--astre-echelle` sa taille, `--parallaxe-*`
- * le léger décalage qui suit le curseur.
+ * C'est le seul reste du ciel d'avant, et le seul qui méritait de rester :
+ * il ne dit plus l'heure par une couleur de fond qu'on ne regarde pas, mais
+ * par ce que ferait un vrai salon — allumer.
  */
-.b-astre {
-  position: absolute;
-  left: var(--astre-x, 62%);
-  top: var(--astre-y, 62%);
-  width: calc(var(--astre-taille, 320px) * var(--astre-echelle, 1));
-  height: calc(var(--astre-taille, 320px) * var(--astre-echelle, 1));
-  border-radius: 50%;
-  background: radial-gradient(circle,
-              var(--astre-coeur, rgba(255, 245, 230, 0.95)) 0%,
-              var(--astre-coeur, rgba(255, 245, 230, 0.95)) var(--astre-net, 12%),
-              var(--astre-halo, rgba(255, 202, 140, 0.40)) var(--astre-diffus, 27%),
-              var(--astre-bord, rgba(255, 202, 140, 0)) var(--astre-limite, 68%));
-  transform: translate(-50%, -50%)
-             translate(var(--parallaxe-x, 0px), var(--parallaxe-y, 0px));
-  opacity: var(--astre-opacite, 0.8);
-  pointer-events: none;
-  /* Trois durées : la position et la taille glissent au fil des heures, la
-     parallaxe doit suivre la souris sans traîner. */
-  transition: left 1.2s ease, top 1.2s ease, opacity 1.2s ease,
-              width 1.2s ease, height 1.2s ease,
-              transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+.b-ampoules { opacity: var(--ampoule-eclat, 0.7); transition: opacity 1.2s linear; }
+
+/* Le reflet du miroir suit le moment de la journée : abricot en plein jour,
+   prune le soir. Posé par le script ; ces valeurs sont celles du jour, pour
+   que la scène reste juste même sans JavaScript. */
+.b-glace-haut { stop-color: var(--glace-haut, #ffcfae); transition: stop-color 1.2s linear; }
+.b-glace-bas  { stop-color: var(--glace-bas,  #fb9590); transition: stop-color 1.2s linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .b-ampoules, .b-glace-haut, .b-glace-bas { transition: none; }
 }
 
 
@@ -201,17 +170,6 @@
 }
 .b-heure:empty { display: none; }
 .b-heure strong { color: rgba(255, 255, 255, 0.92); font-weight: 600; }
-
-/*
- * Rien ne bouge pour qui a demandé que rien ne bouge.
- *
- * Le ciel garde sa couleur et l'astre sa position : l'information reste,
- * seule l'animation disparaît.
- */
-@media (prefers-reduced-motion: reduce) {
-  .b-astre, .b-header { transition: none; }
-}
-
 
 .b-brand {
   position: relative;
@@ -305,18 +263,35 @@
   }
   .b-header {
     padding: 56px 48px;
+    gap: 40px;
   }
+  /* La scène respire sur grand écran, sans jamais dépasser une largeur où
+     les traits du dessin deviendraient épais. */
+  .b-scene { max-width: 500px; }
   .b-brand { font-size: 30px; }
   .b-brand::before { width: 58px; height: 58px; margin-bottom: 18px; border-radius: 16px; }
   .b-brand::after { margin-top: 16px; max-width: 18ch; font-size: 30px; }
   /* L'anglais est plus long d'un mot : à 18ch, « call. » se retrouvait seul
      sur une troisième ligne. */
   .b-html:lang(en) .b-brand::after { max-width: 22ch; }
-  /* L'astre grandit avec le panneau. Le disque net ne fait que douze pour
-     cent de cette valeur : à 520, un soleil d'environ 125 px, et son halo
-     tout le reste. */
-  .b-header { --astre-taille: 520px; }
   .b-heure { font-size: 14px; margin-top: 18px; }
+}
+
+/*
+ * Sur téléphone, le panneau passe au-dessus du formulaire et ne doit pas le
+ * repousser sous la ligne de flottaison : la scène s'y fait discrète, et
+ * disparaît tout à fait sur les écrans courts, où l'essentiel est de voir
+ * le champ « identifiant ».
+ */
+@media (max-width: 899px) {
+  .b-header { padding: 26px 20px; gap: 22px; }
+  .b-scene { max-width: 168px; margin: 0 0 2px; align-self: flex-start; }
+  /* L'accroche se resserre : sur un écran de 844 points, chaque ligne gagnée
+     ici est une ligne de plus du formulaire au-dessus de la pliure. */
+  .b-brand::after { font-size: 17px; margin-top: 8px; max-width: 20ch; }
+}
+@media (max-width: 899px) and (max-height: 700px) {
+  .b-scene { display: none; }
 }
 
 /* ------------------------------------------------------------------ */

@@ -140,7 +140,13 @@
     '<g filter="url(#b-ombre)">',
     '<rect x="232" y="148" width="152" height="92" rx="13" fill="#fffaf7"/>',
     '</g>',
-    '<rect x="245" y="162" width="68" height="6" rx="3" fill="#4c1d3d" fill-opacity="0.22"/>',
+    /* La date du jour, écrite pour de vrai.
+       Une barre grise aurait suffi à suggérer un titre ; une vraie date fait
+       de la carte un rendez-vous plutôt qu'un pictogramme, et elle suit la
+       langue de la page comme le reste du thème. */
+    '<text class="b-carte-date" x="245" y="169"'
+      + ' font-family="Inter, -apple-system, Segoe UI, Roboto, sans-serif"'
+      + ' font-size="9.5" font-weight="600"></text>',
     creneaux(),
     '</g>',
     '</svg>',
@@ -213,6 +219,62 @@
         g.addEventListener("mouseenter", function () { retenir(g); });
         g.addEventListener("click", function () { retenir(g); });
       })(creneaux[i]);
+    }
+  }
+
+  /**
+   * La transition ne vaut qu'entre les écrans du thème.
+   *
+   * `@view-transition { navigation: auto }` s'applique à TOUTE navigation
+   * sortante, y compris celle qui suit une connexion réussie — et qui mène à
+   * l'application, laquelle n'a rien demandé. Le navigateur engage alors une
+   * transition, ne trouve pas l'acceptation de l'autre côté, et l'abandonne :
+   * « InvalidStateError: ViewTransition opt-in disabled », à chaque connexion.
+   *
+   * Sans conséquence visible, mais une console pleine d'erreurs finit par
+   * masquer celles qui comptent — et c'est la suite de vérification qui l'a
+   * relevé, ce qui est précisément son travail.
+   *
+   * On renonce donc nous-mêmes dès que la destination sort du thème. Renoncer
+   * proprement n'est pas la même chose qu'échouer.
+   */
+  function bornerLaTransition() {
+    window.addEventListener("pageswap", function (e) {
+      if (!e.viewTransition) return;
+      var destination = "";
+      try {
+        destination = e.activation.entry.url;
+      } catch (err) {
+        /* Forme de l'événement inattendue : on renonce, plutôt que de laisser
+           une transition partir vers une page qu'on ne connaît pas. */
+      }
+      if (!/\/realms\/[^/]+\/(login-actions|protocol)\//.test(destination)) {
+        e.viewTransition.skipTransition();
+      }
+    });
+  }
+
+  /**
+   * La date du jour, à Casablanca, dans la langue de la page.
+   *
+   * « samedi 28 septembre » plutôt qu'une barre grise : c'est ce qui fait
+   * lire la carte comme un rendez-vous et non comme un pictogramme. Et c'est
+   * vrai, ce qui n'est pas rien sur un écran dont tout le reste est dessiné.
+   */
+  function ecrireDate(scene) {
+    var cible = scene.querySelector(".b-carte-date");
+    if (!cible) return;
+    var langue = document.documentElement.lang || "fr";
+    try {
+      cible.textContent = new Intl.DateTimeFormat(langue, {
+        timeZone: ZONE, weekday: "long", day: "numeric", month: "long",
+      }).format(new Date());
+    } catch (e) {
+      /* Une étiquette de langue que le navigateur refuse ne doit pas laisser
+         la carte avec un titre vide : le français fait un repli honnête. */
+      cible.textContent = new Intl.DateTimeFormat("fr-FR", {
+        timeZone: ZONE, weekday: "long", day: "numeric", month: "long",
+      }).format(new Date());
     }
   }
 
@@ -355,6 +417,8 @@
   };
 
   function demarrer() {
+    bornerLaTransition();
+
     var panneau = document.querySelector(".b-header");
     if (!panneau) return;
 
@@ -366,6 +430,7 @@
     scene.innerHTML = DESSIN;
     panneau.insertBefore(scene, panneau.firstChild);
 
+    ecrireDate(scene);
     rendreChoisissable(scene);
     animerPremierCreneau(scene);
     rendreFlottante(panneau, scene);

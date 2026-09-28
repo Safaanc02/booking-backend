@@ -87,6 +87,21 @@ services:
       KC_HOSTNAME: ${URL_PUBLIQUE:?definir URL_PUBLIQUE dans partage.env}/auth
       KC_PROXY_HEADERS: xforwarded
       KC_HEALTH_ENABLED: "true"
+      #
+      # Le cache de thèmes.
+      #
+      # Le thème est monté en volume et modifié en place : Keycloak, lui, en
+      # garde une copie dès le premier démarrage et la sert indéfiniment. Un
+      # simple `restart` ne la vide pas. On corrige une feuille de style, on
+      # redéploie, on recharge — et l'on voit l'ancienne. Le piège est d'autant
+      # plus sûr qu'un fichier NOUVEAU, lui, est bien servi : le script arrive
+      # à jour pendant que la feuille de style reste figée, et l'on cherche le
+      # bogue dans le mauvais fichier.
+      #
+      # Vrai par défaut, parce que c'est ce qu'il faut à un site fréquenté.
+      # docker-compose.demo.yml le passe à faux, là où l'on travaille le thème.
+      KC_SPI_THEME_CACHE_THEMES: ${THEME_CACHE:-true}
+      KC_SPI_THEME_CACHE_TEMPLATES: ${THEME_CACHE:-true}
       TZ: Africa/Casablanca
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro

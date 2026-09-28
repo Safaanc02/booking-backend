@@ -29,6 +29,17 @@ services:
         limits:
           memory: 96M
 
+  keycloak:
+    environment:
+      # Le thème se travaille ici : Keycloak doit relire le disque à chaque
+      # requête plutôt que servir la copie prise à son premier démarrage.
+      KC_SPI_THEME_CACHE_THEMES: "false"
+      KC_SPI_THEME_CACHE_TEMPLATES: "false"
+      # Et le navigateur ne doit pas garder l'ancienne non plus : le chemin
+      # des ressources porte un numéro de version qui, lui, ne change pas
+      # quand on modifie un fichier.
+      KC_SPI_THEME_STATIC_MAX_AGE: "-1"
+
   api:
     environment:
       MAIL_HOST: mailpit

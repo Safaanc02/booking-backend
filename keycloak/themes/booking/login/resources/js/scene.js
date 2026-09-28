@@ -83,7 +83,8 @@
     '</filter>',
     '</defs>',
 
-    /* ---- Le mur ---- */
+    /* ---- Le décor, qui suit le curseur de loin ---- */
+    '<g class="b-plan-fond">',
     '<ellipse cx="210" cy="132" rx="190" ry="152" fill="url(#b-lueur)"/>',
 
     /* ---- Le miroir ---- */
@@ -123,6 +124,7 @@
     '<rect x="95" y="183" width="12" height="7" rx="2.5" fill="#ffbb94" fill-opacity="0.75"/>',
     '<rect x="118" y="219" width="24" height="21" rx="6" fill="#fffaf7" fill-opacity="0.22"/>',
     '<rect x="121" y="214" width="18" height="6" rx="3" fill="#fffaf7" fill-opacity="0.38"/>',
+    '</g>',
 
     /* ---- La carte de rendez-vous, posée sur le comptoir ---- */
     /*
@@ -134,11 +136,13 @@
      * endroit du dessin où le produit se nomme, et « 09:00 » se lit dans les
      * trois langues du thème.
      */
+    '<g class="b-plan-carte">',
     '<g filter="url(#b-ombre)">',
     '<rect x="232" y="148" width="152" height="92" rx="13" fill="#fffaf7"/>',
     '</g>',
     '<rect x="245" y="162" width="68" height="6" rx="3" fill="#4c1d3d" fill-opacity="0.22"/>',
     creneaux(),
+    '</g>',
     '</svg>',
   ].join("");
 
@@ -151,11 +155,25 @@
   }
 
   /**
-   * Six créneaux, dont un retenu.
+   * Six créneaux, dont un retenu — et qu'on peut changer.
    *
-   * Le créneau retenu est en framboise pleine — la couleur du bouton « Se
-   * connecter » qui se trouve juste à droite, de l'autre côté de l'écran.
-   * Les deux se répondent : c'est le même geste, choisir.
+   * C'est le seul endroit du dessin où l'on peut toucher quelque chose, et
+   * c'est voulu : survoler un créneau le retient, exactement comme sur la
+   * fiche d'un salon. L'écran de connexion fait alors ce que fait le produit,
+   * au lieu de le raconter.
+   *
+   * Le créneau retenu porte la framboise pleine — la couleur du bouton « Se
+   * connecter » qui lui fait face de l'autre côté de l'écran. Les deux se
+   * répondent : c'est le même geste, choisir.
+   *
+   * Les couleurs sont posées par la feuille de style et non par des attributs,
+   * pour qu'elles puissent se transitionner. Un attribut `fill` ne s'anime
+   * pas ; une propriété CSS, oui.
+   *
+   * Aucun de ces créneaux n'est atteignable au clavier, et c'est assumé : le
+   * dessin est décoratif, il porte `aria-hidden`, et ne rien y toucher ne fait
+   * rien perdre. Le rendre focalisable ajouterait six arrêts de tabulation
+   * avant le champ « identifiant », pour un jouet.
    */
   function creneaux() {
     var heures = [["09:00", "09:30", "10:00"], ["10:30", "11:00", "11:30"]];
@@ -165,16 +183,109 @@
       var y = 178 + r * 26;
       rangee.forEach(function (h, c) {
         var x = 245 + c * 44;
-        var pris = h === retenu;
-        out += '<rect x="' + x + '" y="' + y + '" width="38" height="19" rx="9.5" fill="'
-             + (pris ? "#dc586d" : "#4c1d3d") + '" fill-opacity="' + (pris ? "1" : "0.07") + '"/>'
+        var pris = h === retenu ? " b-creneau--pris" : "";
+        out += '<g class="b-creneau' + pris + '" data-heure="' + h + '">'
+             + '<rect x="' + x + '" y="' + y + '" width="38" height="19" rx="9.5"/>'
              + '<text x="' + (x + 19) + '" y="' + (y + 13.5) + '" text-anchor="middle"'
              + ' font-family="Inter, -apple-system, Segoe UI, Roboto, sans-serif"'
-             + ' font-size="10" font-weight="600" fill="' + (pris ? "#fffaf7" : "#4c1d3d") + '"'
-             + ' fill-opacity="' + (pris ? "1" : "0.6") + '">' + h + "</text>";
+             + ' font-size="10" font-weight="600">' + h + "</text>"
+             + "</g>";
       });
     });
     return out;
+  }
+
+  /**
+   * Le créneau suit le curseur.
+   *
+   * Sur écran tactile, le survol n'existe pas : le `click` sert alors de
+   * repli, et la même règle s'applique aux deux.
+   */
+  function rendreChoisissable(scene) {
+    var creneaux = scene.querySelectorAll(".b-creneau");
+    function retenir(cible) {
+      for (var i = 0; i < creneaux.length; i++) {
+        creneaux[i].classList.toggle("b-creneau--pris", creneaux[i] === cible);
+      }
+    }
+    for (var i = 0; i < creneaux.length; i++) {
+      (function (g) {
+        g.addEventListener("mouseenter", function () { retenir(g); });
+        g.addEventListener("click", function () { retenir(g); });
+      })(creneaux[i]);
+    }
+  }
+
+  /**
+   * Sur l'écran d'inscription, le créneau se prend sous les yeux du visiteur.
+   *
+   * La carte arrive avec ses six heures libres, et l'une d'elles se retient
+   * après une seconde. C'est exactement ce que la personne est en train de
+   * faire — ouvrir un compte pour prendre un premier rendez-vous — montré au
+   * moment où elle hésite encore à remplir le formulaire.
+   *
+   * Sur l'écran de connexion, le créneau est déjà pris : on y revient, on a
+   * déjà ses habitudes.
+   *
+   * Pour qui a demandé que rien ne bouge, le créneau est simplement là dès le
+   * départ : l'image reste juste, seule l'animation disparaît.
+   */
+  function animerPremierCreneau(scene) {
+    if (!document.getElementById("kc-register-form")) return;
+
+    var retenu = scene.querySelector(".b-creneau--pris");
+    if (!retenu) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    retenu.classList.remove("b-creneau--pris");
+    setTimeout(function () {
+      /* Rien si le visiteur a déjà choisi lui-même entre-temps : on ne
+         reprend pas la main sur un geste qu'il vient de faire. */
+      if (!scene.querySelector(".b-creneau--pris")) {
+        retenu.classList.add("b-creneau--pris");
+      }
+    }, 900);
+  }
+
+  /**
+   * La profondeur : la carte flotte davantage que le décor.
+   *
+   * Deux plans et deux amplitudes suffisent à détacher la carte du miroir —
+   * c'est la seule chose qui fasse lire « posée devant » plutôt que
+   * « collée dessus ».
+   *
+   * Rien de tout cela sur écran tactile ni pour qui a demandé que rien ne
+   * bouge : un pointeur grossier n'a pas de survol, et l'effet n'aurait pour
+   * seul résultat que de faire sauter le dessin au moindre appui.
+   */
+  function rendreFlottante(panneau, scene) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+
+    var attendu = false;
+    panneau.addEventListener("mousemove", function (e) {
+      if (attendu) return;
+      attendu = true;
+      /* Une seule mise à jour par image : sans cela, un mouvement rapide
+         déclenche des dizaines de calculs de style pour un déplacement que
+         personne ne perçoit. */
+      requestAnimationFrame(function () {
+        attendu = false;
+        var r = panneau.getBoundingClientRect();
+        var dx = (e.clientX - r.left) / r.width - 0.5;
+        var dy = (e.clientY - r.top) / r.height - 0.5;
+        /* En unités du repère du dessin, pas en pixels : l'effet suit alors
+           l'échelle de la scène, et reste le même sur un écran de portable
+           et sur un grand moniteur. */
+        scene.style.setProperty("--px", (dx * 16).toFixed(1) + "px");
+        scene.style.setProperty("--py", (dy * 16).toFixed(1) + "px");
+      });
+    });
+    panneau.addEventListener("mouseleave", function () {
+      scene.style.setProperty("--px", "0px");
+      scene.style.setProperty("--py", "0px");
+    });
   }
 
   /* ------------------------------------------------------------------ */
@@ -254,6 +365,10 @@
     scene.setAttribute("aria-hidden", "true");
     scene.innerHTML = DESSIN;
     panneau.insertBefore(scene, panneau.firstChild);
+
+    rendreChoisissable(scene);
+    animerPremierCreneau(scene);
+    rendreFlottante(panneau, scene);
 
     /* La ligne d'heure, sous l'accroche. Ajoutée ici et non dans le gabarit :
        `base` ne prévoit aucun emplacement pour du texte libre, et reprendre

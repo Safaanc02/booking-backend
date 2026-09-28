@@ -264,18 +264,19 @@
   function ecrireDate(scene) {
     var cible = scene.querySelector(".b-carte-date");
     if (!cible) return;
-    var langue = document.documentElement.lang || "fr";
+    var options = { timeZone: ZONE, weekday: "long", day: "numeric", month: "long" };
+    var texte;
     try {
-      cible.textContent = new Intl.DateTimeFormat(langue, {
-        timeZone: ZONE, weekday: "long", day: "numeric", month: "long",
-      }).format(new Date());
+      texte = new Intl.DateTimeFormat(document.documentElement.lang || "fr", options).format(new Date());
     } catch (e) {
       /* Une étiquette de langue que le navigateur refuse ne doit pas laisser
          la carte avec un titre vide : le français fait un repli honnête. */
-      cible.textContent = new Intl.DateTimeFormat("fr-FR", {
-        timeZone: ZONE, weekday: "long", day: "numeric", month: "long",
-      }).format(new Date());
+      texte = new Intl.DateTimeFormat("fr-FR", options).format(new Date());
     }
+    /* La première lettre seulement.
+       `text-transform: capitalize` en aurait mis une à chaque mot — « Lundi 28
+       Septembre » — et les mois ne prennent pas la majuscule en français. */
+    cible.textContent = texte.charAt(0).toUpperCase() + texte.slice(1);
   }
 
   /**

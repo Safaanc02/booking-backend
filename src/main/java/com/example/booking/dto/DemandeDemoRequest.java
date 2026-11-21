@@ -24,6 +24,17 @@ import lombok.Data;
 @Data
 public class DemandeDemoRequest {
 
+    /**
+     * Pot de miel.
+     *
+     * Un champ que le formulaire rend invisible et qu'aucune personne ne
+     * remplit : seul un robot qui complète tout ce qu'il trouve y écrit. S'il
+     * est renseigné, la demande est acceptée en façade et jetée en silence —
+     * répondre « refusé » apprendrait au robot ce qu'il faut éviter.
+     */
+    @Size(max = 200)
+    private String siteWeb;
+
     @NotBlank(message = "Le nom de l'établissement est obligatoire")
     @Size(max = 150)
     private String nomEtablissement;

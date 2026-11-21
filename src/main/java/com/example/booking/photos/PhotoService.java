@@ -85,14 +85,40 @@ public class PhotoService {
                     + " — attendu JPEG, PNG ou WebP");
         }
 
-        String fichier = stockage.ecrire(contenu, type);
+        /*
+         * Redimensionnée à l'arrivée, et non servie telle quelle.
+         *
+         * Six photos de téléphone à 5 Mo faisaient une fiche de 30 Mo : sur
+         * la 4G d'un bus à Casablanca, elle ne s'affichait jamais. 1600 px de
+         * côté suffisent au plus grand écran ; la vignette de 480 px sert les
+         * cartes de la recherche, qui en affichent vingt à la fois.
+         *
+         * Le WebP n'est pas décodable par ImageIO sans greffon : il reste tel
+         * quel, sans vignette, plutôt que d'être refusé — c'est déjà un format
+         * compact.
+         */
+        Redimensionnement.Resultat image = Redimensionnement.reduire(contenu, type);
+        String fichier = stockage.ecrire(image.principale(), image.type());
+        if (image.vignette() != null) {
+            stockage.ecrireDerive(fichier + ".min.jpg", image.vignette());
+        }
         int rang = photos.findBySalonIdOrderByOrdreAscIdAsc(salonId).stream()
                 .mapToInt(PhotoSalon::getOrdre).max().orElse(-1) + 1;
 
         return photos.save(PhotoSalon.builder()
-                .salon(salon).fichier(fichier).typeMime(type.mime())
-                .taille(contenu.length).ordre(rang)
+                .salon(salon).fichier(fichier).typeMime(image.type().mime())
+                .taille(image.principale().length).ordre(rang)
                 .build());
+    }
+
+    /** La vignette d'une photo, ou l'original si elle n'existe pas (WebP, anciens envois). */
+    public byte[] vignette(PhotoSalon photo) {
+        String derive = photo.getFichier() + ".min.jpg";
+        return stockage.existe(derive) ? stockage.lire(derive) : contenu(photo);
+    }
+
+    public boolean aUneVignette(PhotoSalon photo) {
+        return stockage.existe(photo.getFichier() + ".min.jpg");
     }
 
     public void supprimer(Long photoId) {
@@ -105,6 +131,7 @@ public class PhotoService {
         // la suppression du fichier, la fiche pointerait une image absente.
         photos.delete(photo);
         stockage.supprimer(photo.getFichier());
+        stockage.supprimer(photo.getFichier() + ".min.jpg");
     }
 
     /**

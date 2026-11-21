@@ -2,7 +2,7 @@
   "realm": "booking-realm",
   "enabled": true,
   "displayName": "DarZin",
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "resetPasswordAllowed": true,
@@ -198,5 +198,14 @@
     "description": "Rôles reçus d'office à la création d'un compte",
     "composite": true,
     "clientRole": false
-  }
+  },
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 10,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "quickLoginCheckMilliSeconds": 1000,
+  "minimumQuickLoginWaitSeconds": 60,
+  "passwordPolicy": "length(10) and notUsername(undefined) and notEmail(undefined)"
 }

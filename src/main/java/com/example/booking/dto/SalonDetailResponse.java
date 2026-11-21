@@ -22,7 +22,6 @@ public class SalonDetailResponse {
     private String ville;
     private String quartier;
     private String telephone;
-    private String email;
     /** Métier principal : c'est lui qui donne au salon sa couleur. */
     private String categorie;
     /** Tous les métiers exercés, principal compris. */
@@ -37,4 +36,15 @@ public class SalonDetailResponse {
     private Integer delaiAnnulationHeures;
     private List<PrestationResponse> prestations;
     private List<EmployeResponse> employes;
+    private Double latitude;
+    private Double longitude;
+
+    /** Les horaires d'ouverture, tels que le salon les a saisis — vide tant qu'il ne l'a pas fait. */
+    @Builder.Default
+    private List<HoraireResponse> horaires = List.of();
+    /** « Ouvert là, maintenant ? » Nul sans horaires saisis. */
+    private Boolean ouvertMaintenant;
+    private java.time.LocalTime fermeA;
+    private java.time.LocalTime ouvreA;
+    private Integer ouvreJour;
 }

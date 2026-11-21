@@ -50,9 +50,38 @@ public class DemandeDemoService {
         this.depot = depot;
     }
 
+    /**
+     * Trois demandes par heure et par origine.
+     *
+     * Le dédoublonnage par adresse ne tenait pas face à un robot qui en change
+     * à chaque envoi : la file commerciale se remplissait de bruit qu'Ahlam
+     * triait avant de rappeler un vrai salon. En mémoire, comme le limiteur
+     * de débit : l'état se perd au redémarrage, ce qui est sans conséquence
+     * pour une fenêtre d'une heure.
+     */
+    private static final int MAX_PAR_ORIGINE = 3;
+    private static final Duration FENETRE_ORIGINE = Duration.ofHours(1);
+    private final java.util.Map<String, java.util.Deque<Instant>> parOrigine =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     @Transactional
     public DemandeDemo enregistrer(DemandeDemoRequest r) {
+        return enregistrer(r, null);
+    }
+
+    @Transactional
+    public DemandeDemo enregistrer(DemandeDemoRequest r, String origine) {
         String email = r.getEmail().trim();
+
+        if (r.getSiteWeb() != null && !r.getSiteWeb().isBlank()) {
+            log.info("Demande de démonstration ignorée, pot de miel rempli : {}", email);
+            return null;
+        }
+
+        if (origine != null && !origineAutorisee(origine)) {
+            log.info("Demande de démonstration ignorée, trop d'envois depuis {}", origine);
+            return null;
+        }
 
         if (depot.dejaDemandeDepuis(email, Instant.now().minus(FENETRE_DOUBLON))) {
             // On ne dit pas au visiteur qu'une demande existe déjà pour cette
@@ -182,5 +211,18 @@ public class DemandeDemoService {
                 d.getSalon() != null ? d.getSalon().getNom() : null,
                 d.getCreeLe(), d.getTraiteLe(),
                 d.getTraitePar() != null ? d.getTraitePar().getUsername() : null);
+    }
+
+    private boolean origineAutorisee(String origine) {
+        Instant maintenant = Instant.now();
+        java.util.Deque<Instant> envois = parOrigine.computeIfAbsent(origine, k -> new java.util.ArrayDeque<>());
+        synchronized (envois) {
+            while (!envois.isEmpty() && envois.peekFirst().isBefore(maintenant.minus(FENETRE_ORIGINE))) {
+                envois.pollFirst();
+            }
+            if (envois.size() >= MAX_PAR_ORIGINE) return false;
+            envois.addLast(maintenant);
+            return true;
+        }
     }
 }

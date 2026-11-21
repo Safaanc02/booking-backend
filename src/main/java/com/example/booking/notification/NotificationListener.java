@@ -32,4 +32,10 @@ public class NotificationListener {
     public void surReservationDeplacee(ReservationDeplacee evenement) {
         notifications.deplacerPourReservation(evenement.reservationId(), evenement.ancienDebut());
     }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void surAnnulationParSalon(ReservationAnnuleeParSalon evenement) {
+        notifications.annulerParSalonPourReservation(evenement.reservationId());
+    }
 }

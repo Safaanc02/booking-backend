@@ -73,21 +73,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .formatted(Instant.now().toString(), attente));
     }
 
-    /**
-     * Origine de l'appel.
-     *
-     * X-Forwarded-For d'abord : derrière un reverse proxy, l'adresse distante
-     * est celle du proxy et tous les visiteurs partageraient un seul seau.
-     * Cet en-tête est falsifiable — il ne doit être pris en compte que si le
-     * proxy en amont le réécrit, ce qui est le cas d'un déploiement normal.
-     */
+    /** Origine de l'appel : voir {@link com.example.booking.config.OrigineRequete}. */
     private String origine(HttpServletRequest request) {
-        String transmis = request.getHeader("X-Forwarded-For");
-        if (transmis != null && !transmis.isBlank()) {
-            return transmis.split(",")[0].trim();
-        }
-        String reel = request.getRemoteAddr();
-        return reel != null ? reel : "inconnu";
+        return com.example.booking.config.OrigineRequete.de(request);
     }
 
     /** Purge les seaux inactifs : sans cela la carte croît avec le nombre d'adresses vues. */

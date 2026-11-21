@@ -10,6 +10,9 @@ import com.example.booking.dto.EmployeResponse;
 import com.example.booking.dto.ProchaineDispo;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
+import com.example.booking.dto.SalonPublicResponse;
+import com.example.booking.dto.HoraireResponse;
+import com.example.booking.config.OrigineRequete;
 import com.example.booking.model.enums.SalonCategorie;
 import com.example.booking.service.DemandeDemoService;
 import com.example.booking.service.DisponibiliteService;
@@ -49,17 +52,21 @@ public class PublicController {
     private final AvisService avis;
     private final ReservationService reservations;
     private final DemandeDemoService demandes;
+    /** L'adresse publique du site, pour les balises de partage et le plan du site. */
+    private final String urlPublique;
 
     public PublicController(PublicCatalogService catalogue,
                             DisponibiliteService disponibilites,
                             AvisService avis,
                             ReservationService reservations,
-                            DemandeDemoService demandes) {
+                            DemandeDemoService demandes,
+                            @org.springframework.beans.factory.annotation.Value("${app.url-publique}") String urlPublique) {
         this.catalogue = catalogue;
         this.disponibilites = disponibilites;
         this.avis = avis;
         this.reservations = reservations;
         this.demandes = demandes;
+        this.urlPublique = urlPublique.replaceAll("/+$", "");
     }
 
     /* ---------- Demande de démonstration ---------- */
@@ -76,8 +83,9 @@ public class PublicController {
      */
     @PostMapping("/demandes-demo")
     public ResponseEntity<DemandeDemoConfirmation> demanderDemo(
-            @Valid @RequestBody DemandeDemoRequest requete) {
-        demandes.enregistrer(requete);
+            @Valid @RequestBody DemandeDemoRequest requete,
+            jakarta.servlet.http.HttpServletRequest http) {
+        demandes.enregistrer(requete, OrigineRequete.de(http));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(new DemandeDemoConfirmation(
                 "Votre demande est enregistrée. Un conseiller vous rappelle sous 48 heures "
                         + "pour convenir d'une installation."));
@@ -126,7 +134,7 @@ public class PublicController {
      * les ongles remonte bien sous « Onglerie ».
      */
     @GetMapping("/salons")
-    public ResponseEntity<Page<SalonResponse>> rechercher(
+    public ResponseEntity<Page<SalonPublicResponse>> rechercher(
             @RequestParam(required = false) String ville,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) SalonCategorie metier,
@@ -232,6 +240,88 @@ public class PublicController {
             @RequestParam(defaultValue = "7") int jours
     ) {
         return cache60(disponibilites.prochainsJoursDisponibles(id, prestationId, employeId, Math.min(jours, 30)));
+    }
+
+    /** Les horaires d'ouverture d'un salon. Une cliente a le droit de savoir quand venir. */
+    @GetMapping("/salons/{id}/horaires")
+    public ResponseEntity<List<HoraireResponse>> horaires(@PathVariable Long id) {
+        return cache60(catalogue.horairesPublics(id));
+    }
+
+    /**
+     * Les balises de partage d'une fiche, en fragment HTML.
+     *
+     * Le site est une application : son index.html est le même pour toutes
+     * les pages, et un lien de salon partagé sur WhatsApp n'avait ni image ni
+     * titre — au Maroc, c'est le premier canal de recommandation. Caddy
+     * inclut ce fragment dans l'en-tête de la page servie sous /salon/*.
+     *
+     * Toujours 200, même pour un salon inconnu : ce fragment est injecté dans
+     * du HTML, et un corps d'erreur JSON y ferait une page cassée.
+     */
+    @GetMapping(value = "/salons/{id}/og", produces = "text/html;charset=UTF-8")
+    public ResponseEntity<String> balisesDePartage(@PathVariable String id) {
+        String titre = "DarZin — Réservez votre salon de beauté";
+        String description = "Réservez en ligne coiffure, barbier, onglerie et hammam partout au Maroc.";
+        String image = urlPublique + "/logo-darzin-complet.png";
+        String url = urlPublique + "/salon/" + id;
+        try {
+            SalonDetailResponse salon = catalogue.fiche(Long.parseLong(id));
+            titre = salon.getNom() + " · " + (salon.getVille() != null ? salon.getVille() : "DarZin");
+            String lieu = java.util.stream.Stream.of(salon.getQuartier(), salon.getVille())
+                    .filter(v -> v != null && !v.isBlank()).collect(java.util.stream.Collectors.joining(", "));
+            description = (salon.getDescription() != null && !salon.getDescription().isBlank()
+                    ? salon.getDescription()
+                    : "Réservez en ligne chez " + salon.getNom() + (lieu.isEmpty() ? "" : " à " + lieu) + ".");
+            if (!salon.getPhotos().isEmpty()) {
+                String premiere = salon.getPhotos().get(0);
+                image = premiere.startsWith("http") ? premiere : urlPublique + premiere;
+            }
+        } catch (RuntimeException ignore) {
+            /* Salon inconnu ou identifiant mal formé : balises génériques. */
+        }
+        String html = "<title>" + echapper(titre) + "</title>\n"
+                + "<meta property=\"og:type\" content=\"website\">\n"
+                + "<meta property=\"og:title\" content=\"" + echapper(titre) + "\">\n"
+                + "<meta property=\"og:description\" content=\"" + echapper(description) + "\">\n"
+                + "<meta property=\"og:image\" content=\"" + echapper(image) + "\">\n"
+                + "<meta property=\"og:url\" content=\"" + echapper(url) + "\">\n"
+                + "<meta property=\"og:site_name\" content=\"DarZin\">\n"
+                + "<meta name=\"twitter:card\" content=\"summary_large_image\">\n"
+                + "<meta name=\"description\" content=\"" + echapper(description) + "\">\n";
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePublic())
+                .body(html);
+    }
+
+    /**
+     * Le plan du site, engendré depuis le catalogue.
+     *
+     * Caddy répondait 200 avec la page d'accueil à /sitemap.xml : Google
+     * recevait du HTML en guise de plan et indexait des adresses fausses comme
+     * valides.
+     */
+    @GetMapping(value = "/sitemap.xml", produces = "application/xml;charset=UTF-8")
+    public ResponseEntity<String> sitemap() {
+        StringBuilder xml = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+                .append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
+        for (String chemin : List.of("/", "/recherche", "/professionnels")) {
+            xml.append("  <url><loc>").append(echapper(urlPublique + chemin)).append("</loc></url>\n");
+        }
+        catalogue.rechercher(null, null, null, org.springframework.data.domain.PageRequest.of(0, 500))
+                .forEach(salon -> xml.append("  <url><loc>")
+                        .append(echapper(urlPublique + "/salon/" + salon.getId()))
+                        .append("</loc></url>\n"));
+        xml.append("</urlset>\n");
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(6)).cachePublic())
+                .body(xml.toString());
+    }
+
+    private static String echapper(String texte) {
+        return texte == null ? "" : texte
+                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
     }
 
     @GetMapping("/villes")

@@ -169,6 +169,32 @@ public class RedacteurEmail {
         return message(r.getSalon().getEmail(), sujet, ctx, texte);
     }
 
+    /** Au client, quand le salon annule de son côté. */
+    public CanalNotification.Message annulationSalon(Reservation r) {
+        Context ctx = contexteCommun(r);
+        ctx.setVariable("contenu", "email/annulation-salon :: contenu");
+        ctx.setVariable("lienSalon", urlPublique + "/salon/" + r.getSalon().getId());
+
+        String sujet = "Rendez-vous annulé par " + r.getSalon().getNom() + " — " + quand(r);
+        String texte = """
+                Bonjour %s,
+
+                %s ne pourra pas vous recevoir %s. Nous sommes désolés.
+
+                Prestation : %s
+                Avec       : %s
+
+                Pour reprendre rendez-vous ou pour comprendre, le salon répond au %s.
+                Reprendre rendez-vous : %s
+                """.formatted(
+                nomClient(r), r.getSalon().getNom(), quand(r),
+                r.getNomPrestationFige(), nomEmploye(r),
+                telephoneLisible(r.getSalon().getTelephone()),
+                urlPublique + "/salon/" + r.getSalon().getId());
+
+        return message(r.getClient().getEmail(), sujet, ctx, texte);
+    }
+
     public CanalNotification.Message rappelClient(Reservation r) {
         Context ctx = contexteCommun(r);
         ctx.setVariable("contenu", "email/rappel-client :: contenu");

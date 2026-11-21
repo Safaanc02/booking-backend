@@ -5,6 +5,13 @@ import com.example.booking.dto.PrestationResponse;
 import com.example.booking.dto.ProchaineDispo;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
+import java.time.ZonedDateTime;
+import java.time.LocalTime;
+import java.time.DayOfWeek;
+import com.example.booking.repository.HoraireOuvertureRepository;
+import com.example.booking.model.HoraireOuverture;
+import com.example.booking.dto.HoraireResponse;
+import com.example.booking.dto.SalonPublicResponse;
 import com.example.booking.geo.Distance;
 import com.example.booking.model.Employe;
 import com.example.booking.photos.PhotoService;
@@ -42,6 +49,7 @@ public class PublicCatalogService {
     private final EmployePrestationRepository employePrestationRepository;
     private final PrestationRepository prestationRepository;
     private final PhotoService photoService;
+    private final HoraireOuvertureRepository horaireRepository;
     /**
      * Le moteur de disponibilité, pour annoncer un premier créneau dès la
      * liste. Sens unique : le moteur ignore le catalogue, il n'y a pas de
@@ -54,13 +62,15 @@ public class PublicCatalogService {
                                 EmployePrestationRepository employePrestationRepository,
                                 PrestationRepository prestationRepository,
                                 DisponibiliteService disponibilites,
-                                PhotoService photoService) {
+                                PhotoService photoService,
+                                HoraireOuvertureRepository horaireRepository) {
         this.salonRepository = salonRepository;
         this.employeRepository = employeRepository;
         this.employePrestationRepository = employePrestationRepository;
         this.prestationRepository = prestationRepository;
         this.disponibilites = disponibilites;
         this.photoService = photoService;
+        this.horaireRepository = horaireRepository;
     }
 
     /**
@@ -70,7 +80,7 @@ public class PublicCatalogService {
      * pagination : une carte sans tarif n'aide personne à choisir, et le
      * contrat d'API l'annonçait déjà sans que rien ne le fournisse.
      */
-    public Page<SalonResponse> rechercher(String ville, String q,
+    public Page<SalonPublicResponse> rechercher(String ville, String q,
                                          SalonCategorie metier, Pageable pageable) {
         return rechercher(ville, q, metier, null, pageable);
     }
@@ -83,7 +93,7 @@ public class PublicCatalogService {
      * dans le rayon remontent, du plus proche au plus lointain, chacun avec sa
      * distance.
      */
-    public Page<SalonResponse> rechercher(String ville, String q, SalonCategorie metier,
+    public Page<SalonPublicResponse> rechercher(String ville, String q, SalonCategorie metier,
                                           Proximite autour, Pageable pageable) {
         Page<Salon> page = autour == null
                 ? salonRepository.rechercher(
@@ -111,10 +121,19 @@ public class PublicCatalogService {
         // consultée du produit.
         Map<Long, List<String>> photos = photoService.parSalon(ids);
 
+        // Les horaires de toute la page en une requête, pour dire « ouvert
+        // là ? » sur chaque carte sans vingt allers-retours.
+        Map<Long, List<HoraireOuverture>> horaires = ids.isEmpty() ? Map.of()
+                : horaireRepository
+                        .findBySalonIdInAndEmployeIsNullOrderBySalonIdAscJourSemaineAscHeureDebutAsc(ids)
+                        .stream().collect(Collectors.groupingBy(h -> h.getSalon().getId()));
+        ZonedDateTime maintenant = ZonedDateTime.now(disponibilites.zone());
+
         return page.map(salon -> {
-            SalonResponse reponse = toResponse(salon);
+            SalonPublicResponse reponse = toPublic(salon);
             reponse.setPrixMin(prix.get(salon.getId()));
             reponse.setPhotos(urls(photos.getOrDefault(salon.getId(), List.of())));
+            Ouverture.de(horaires.getOrDefault(salon.getId(), List.of()), maintenant).appliquer(reponse);
             if (autour != null && salon.getLatitude() != null && salon.getLongitude() != null) {
                 // Recalculée ici plutôt que rapportée par la requête : la
                 // projection native reste ainsi exactement l'entité, sans
@@ -208,7 +227,7 @@ public class PublicCatalogService {
                 .map(e -> toResponse(e, null))
                 .toList();
 
-        return SalonDetailResponse.builder()
+        SalonDetailResponse fiche = SalonDetailResponse.builder()
                 .id(salon.getId())
                 .nom(salon.getNom())
                 .description(salon.getDescription())
@@ -216,9 +235,11 @@ public class PublicCatalogService {
                 .ville(salon.getVille())
                 .quartier(salon.getQuartier())
                 .telephone(salon.getTelephone())
-                .email(salon.getEmail())
                 .categorie(salon.getCategorie() != null ? salon.getCategorie().name() : null)
                 .metiers(SalonService.metiersDe(salon))
+                .latitude(salon.getLatitude())
+                .longitude(salon.getLongitude())
+                .horaires(horairesPublics(id))
                 .photos(urls(photoService.duSalon(id).stream()
                         .map(com.example.booking.model.PhotoSalon::getFichier).toList()))
                 .noteMoyenne(salon.getNoteMoyenne())
@@ -227,6 +248,9 @@ public class PublicCatalogService {
                 .prestations(prestations)
                 .employes(employes)
                 .build();
+        Ouverture.de(horaireRepository.findBySalonIdAndEmployeIsNullOrderByJourSemaineAscHeureDebutAsc(id),
+                     ZonedDateTime.now(disponibilites.zone())).appliquer(fiche);
+        return fiche;
     }
 
     /** Praticiens sachant réaliser une prestation, avec leur durée effective. */
@@ -290,5 +314,75 @@ public class PublicCatalogService {
         // n'intéressent que le salon.
         return new EmployeResponse(e.getId(), e.getPrenom(), e.getNom(),
                 e.getTitre(), e.getPhotoUrl(), dureeMinutes, null, null);
+    }
+
+    /** Les horaires d'ouverture, publics : une cliente a le droit de savoir quand venir. */
+    public List<HoraireResponse> horairesPublics(Long salonId) {
+        return horaireRepository.findBySalonIdAndEmployeIsNullOrderByJourSemaineAscHeureDebutAsc(salonId)
+                .stream()
+                .map(h -> new HoraireResponse(h.getId(), h.getJourSemaine().getValue(), h.getHeureDebut(), h.getHeureFin()))
+                .toList();
+    }
+
+    /** La projection publique d'un salon : rien de ce qui ne regarde pas une cliente. */
+    private SalonPublicResponse toPublic(Salon s) {
+        return SalonPublicResponse.builder()
+                .id(s.getId())
+                .nom(s.getNom())
+                .description(s.getDescription())
+                .adresse(s.getAdresse())
+                .ville(s.getVille())
+                .quartier(s.getQuartier())
+                .telephone(s.getTelephone())
+                .categorie(s.getCategorie() != null ? s.getCategorie().name() : null)
+                .metiers(SalonService.metiersDe(s))
+                .noteMoyenne(s.getNoteMoyenne())
+                .nombreAvis(s.getNombreAvis())
+                .latitude(s.getLatitude())
+                .longitude(s.getLongitude())
+                .delaiAnnulationHeures(s.getDelaiAnnulationHeures())
+                .build();
+    }
+
+    /**
+     * « Ouvert là, maintenant ? », et sinon quand ça change.
+     *
+     * Calculé depuis les plages du salon à l'heure de Casablanca. Sans aucune
+     * plage saisie, on ne répond rien du tout : « fermé » par défaut ferait
+     * fuir les clientes d'un salon qui n'a simplement pas encore rempli ses
+     * horaires.
+     */
+    record Ouverture(Boolean ouvert, LocalTime fermeA, LocalTime ouvreA, Integer ouvreJour) {
+
+        static Ouverture de(List<HoraireOuverture> plages, ZonedDateTime maintenant) {
+            if (plages.isEmpty()) return new Ouverture(null, null, null, null);
+            DayOfWeek jour = maintenant.getDayOfWeek();
+            LocalTime heure = maintenant.toLocalTime();
+
+            for (HoraireOuverture h : plages) {
+                if (h.getJourSemaine() == jour
+                        && !heure.isBefore(h.getHeureDebut()) && heure.isBefore(h.getHeureFin())) {
+                    return new Ouverture(true, h.getHeureFin(), null, null);
+                }
+            }
+            // Fermé : la prochaine ouverture, aujourd'hui plus tard puis les jours suivants.
+            for (int d = 0; d < 7; d++) {
+                DayOfWeek j = jour.plus(d);
+                for (HoraireOuverture h : plages) {
+                    if (h.getJourSemaine() != j) continue;
+                    if (d == 0 && !h.getHeureDebut().isAfter(heure)) continue;
+                    return new Ouverture(false, null, h.getHeureDebut(), d == 0 ? null : j.getValue());
+                }
+            }
+            return new Ouverture(false, null, null, null);
+        }
+
+        void appliquer(SalonPublicResponse r) {
+            r.setOuvertMaintenant(ouvert); r.setFermeA(fermeA); r.setOuvreA(ouvreA); r.setOuvreJour(ouvreJour);
+        }
+
+        void appliquer(SalonDetailResponse r) {
+            r.setOuvertMaintenant(ouvert); r.setFermeA(fermeA); r.setOuvreA(ouvreA); r.setOuvreJour(ouvreJour);
+        }
     }
 }

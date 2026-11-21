@@ -92,6 +92,24 @@ public class NotificationService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void annulerParSalonPourReservation(Long reservationId) {
+        reservationRepository.findById(reservationId).ifPresent(this::signalerAnnulationSalon);
+    }
+
+    /**
+     * Le salon a annulé : la cliente doit le savoir avant de partir.
+     *
+     * Ce type existait depuis la première version du journal et n'était
+     * déclenché nulle part. La cliente se présentait devant une porte fermée.
+     */
+    public void signalerAnnulationSalon(Reservation r) {
+        if (r.getClient() != null && renseigne(r.getClient().getEmail())) {
+            envoyer(r, TypeNotification.ANNULATION_SALON, r.getClient().getEmail(),
+                    () -> redacteur.annulationSalon(r));
+        }
+    }
+
     public void rappeler(Reservation r) {
         if (r.getClient() != null && renseigne(r.getClient().getEmail())) {
             envoyer(r, TypeNotification.RAPPEL_CLIENT, r.getClient().getEmail(),

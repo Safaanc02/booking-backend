@@ -98,15 +98,19 @@ public class PhotoController {
      * justifie de la redemander.
      */
     @GetMapping("/api/public/photos/{fichier}")
-    public ResponseEntity<byte[]> servir(@PathVariable String fichier) {
+    public ResponseEntity<byte[]> servir(@PathVariable String fichier,
+                                         @RequestParam(required = false) String taille) {
         PhotoSalon photo = photos.parFichier(fichier);
+        // La vignette, quand elle existe et qu'on la demande : les cartes de
+        // la recherche en affichent vingt, elles n'ont pas besoin de 1600 px.
+        boolean vignette = "vignette".equals(taille) && photos.aUneVignette(photo);
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(photo.getTypeMime()))
+                .contentType(vignette ? MediaType.IMAGE_JPEG : MediaType.parseMediaType(photo.getTypeMime()))
                 .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable())
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "inline; filename=\"" + photo.getFichier() + "\"")
                 .header("X-Content-Type-Options", "nosniff")
-                .body(photos.contenu(photo));
+                .body(vignette ? photos.vignette(photo) : photos.contenu(photo));
     }
 
     private static Map<String, Object> decrire(PhotoSalon p) {

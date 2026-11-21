@@ -65,6 +65,15 @@ public class StockagePhotos {
         return nom;
     }
 
+    /** Écrit un dérivé à côté de l'original — la vignette porte le nom de l'original suivi de « .min.jpg ». */
+    public void ecrireDerive(String nom, byte[] contenu) {
+        try {
+            Files.write(resoudre(nom), contenu);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Écriture du dérivé impossible : " + nom, e);
+        }
+    }
+
     public byte[] lire(String nom) {
         try {
             return Files.readAllBytes(resoudre(nom));

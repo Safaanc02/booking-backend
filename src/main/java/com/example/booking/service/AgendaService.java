@@ -9,6 +9,7 @@ import com.example.booking.model.Reservation;
 import com.example.booking.model.Salon;
 import com.example.booking.model.enums.OrigineReservation;
 import com.example.booking.model.enums.StatutReservation;
+import com.example.booking.notification.ReservationAnnuleeParSalon;
 import com.example.booking.notification.ReservationCreee;
 import com.example.booking.repository.EmployePrestationRepository;
 import com.example.booking.repository.EmployeRepository;
@@ -208,6 +209,27 @@ public class AgendaService {
     }
 
     /** Le salon marque le rendez-vous honoré, absent, ou l'annule de son côté. */
+    /**
+     * Les transitions qu'un salon a le droit de faire.
+     *
+     * Il n'y en avait aucune : « honoré » se posait sur un rendez-vous de la
+     * semaine prochaine, et un rendez-vous annulé repassait « confirmé » alors
+     * que le créneau avait été repris — la contrainte d'exclusion refusait au
+     * commit, et le gérant recevait une erreur 500 sans explication.
+     *
+     * EN_ATTENTE → CONFIRMEE, ANNULEE_SALON
+     * CONFIRMEE  → HONOREE (une fois commencé), ABSENT (une fois commencé), ANNULEE_SALON
+     * HONOREE    ↔ ABSENT (une erreur de pointage se corrige)
+     * ANNULEE_*  → CONFIRMEE (on réactive, si le créneau est encore libre)
+     */
+    private static final Map<StatutReservation, java.util.Set<StatutReservation>> TRANSITIONS = Map.of(
+            StatutReservation.EN_ATTENTE,     java.util.Set.of(StatutReservation.CONFIRMEE, StatutReservation.ANNULEE_SALON),
+            StatutReservation.CONFIRMEE,      java.util.Set.of(StatutReservation.HONOREE, StatutReservation.ABSENT, StatutReservation.ANNULEE_SALON),
+            StatutReservation.HONOREE,        java.util.Set.of(StatutReservation.ABSENT),
+            StatutReservation.ABSENT,         java.util.Set.of(StatutReservation.HONOREE),
+            StatutReservation.ANNULEE_SALON,  java.util.Set.of(StatutReservation.CONFIRMEE),
+            StatutReservation.ANNULEE_CLIENT, java.util.Set.of(StatutReservation.CONFIRMEE));
+
     public AgendaResponse changerStatut(Long reservationId, StatutReservation statut) {
         Reservation r = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new NoSuchElementException("Réservation introuvable : " + reservationId));
@@ -218,11 +240,57 @@ public class AgendaService {
             throw new IllegalArgumentException(
                     "Une annulation par le salon se marque ANNULEE_SALON, pas ANNULEE_CLIENT");
         }
+        StatutReservation actuel = r.getStatut();
+        if (actuel == statut) {
+            return toResponse(r);
+        }
+        if (!TRANSITIONS.getOrDefault(actuel, java.util.Set.of()).contains(statut)) {
+            throw new IllegalStateException("Un rendez-vous " + libelle(actuel)
+                    + " ne peut pas passer à " + libelle(statut));
+        }
+        // « Honoré » et « absent » se constatent, ils ne se prédisent pas.
+        if ((statut == StatutReservation.HONOREE || statut == StatutReservation.ABSENT)
+                && r.getDebut().isAfter(Instant.now())) {
+            throw new IllegalStateException("Ce rendez-vous n'a pas encore commencé : "
+                    + "on ne peut pas encore dire si la cliente est venue");
+        }
+
         r.setStatut(statut);
         if (statut == StatutReservation.ANNULEE_SALON) {
             r.setAnnuleeLe(Instant.now());
         }
-        return toResponse(reservationRepository.save(r));
+
+        Reservation enregistree;
+        try {
+            // Flushé ici, pas au commit : si la réactivation heurte un créneau
+            // repris entre-temps, c'est maintenant qu'on veut le savoir, avec
+            // un message, et non en 500 à la fin de la requête.
+            enregistree = reservationRepository.saveAndFlush(r);
+        } catch (DataIntegrityViolationException e) {
+            if (estChevauchement(e)) {
+                throw new IllegalStateException("Ce créneau a été repris entre-temps : "
+                        + "le rendez-vous ne peut pas être réactivé");
+            }
+            throw e;
+        }
+
+        if (statut == StatutReservation.ANNULEE_SALON) {
+            // La cliente doit le savoir avant de partir. Publié dans la
+            // transaction, consommé après son commit.
+            evenements.publishEvent(new ReservationAnnuleeParSalon(enregistree.getId()));
+        }
+        return toResponse(enregistree);
+    }
+
+    private static String libelle(StatutReservation s) {
+        return switch (s) {
+            case EN_ATTENTE -> "en attente";
+            case CONFIRMEE -> "confirmé";
+            case HONOREE -> "honoré";
+            case ABSENT -> "marqué absent";
+            case ANNULEE_SALON -> "annulé par le salon";
+            case ANNULEE_CLIENT -> "annulé par la cliente";
+        };
     }
 
     /* ---------- Helpers ---------- */

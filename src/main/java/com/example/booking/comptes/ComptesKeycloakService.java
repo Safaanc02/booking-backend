@@ -181,6 +181,11 @@ public class ComptesKeycloakService {
                             .path("/admin/realms/{realm}/users/{id}/execute-actions-email")
                             .queryParam("client_id", "booking-app")
                             .queryParam("redirect_uri", retour)
+                            // Sept jours, et non les douze heures par défaut de
+                            // Keycloak : un gérant référencé le vendredi soir
+                            // qui ouvre le courriel le samedi après-midi lisait
+                            // « lien expiré », et il fallait renvoyer.
+                            .queryParam("lifespan", 604800)
                             .build(realm, keycloakId))
                     .header("Authorization", "Bearer " + jetonDeService())
                     .contentType(MediaType.APPLICATION_JSON)

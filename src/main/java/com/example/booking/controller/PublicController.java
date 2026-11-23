@@ -11,6 +11,7 @@ import com.example.booking.dto.ProchaineDispo;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
 import com.example.booking.dto.SalonPublicResponse;
+import com.example.booking.dto.CreneauxDuJour;
 import com.example.booking.dto.HoraireResponse;
 import com.example.booking.config.OrigineRequete;
 import com.example.booking.model.enums.SalonCategorie;
@@ -322,6 +323,22 @@ public class PublicController {
         return texte == null ? "" : texte
                 .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 .replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
+    /**
+     * La journée d'une ville, heure par heure : qui peut vous recevoir.
+     *
+     * Le renversement de l'accueil — l'heure d'abord, le salon ensuite.
+     * Soixante secondes de cache : la réponse bouge à chaque réservation, mais
+     * une minute de retard sur « 7 salons libres à 16:30 » ne trompe personne,
+     * et la route est appelée par chaque visite de la page d'accueil.
+     */
+    @GetMapping("/creneaux-du-jour")
+    public ResponseEntity<CreneauxDuJour> creneauxDuJour(
+            @RequestParam(required = false) String ville,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        LocalDate jour = date != null ? date : LocalDate.now(disponibilites.zone());
+        return cache60(catalogue.creneauxDuJour(ville, jour));
     }
 
     @GetMapping("/villes")

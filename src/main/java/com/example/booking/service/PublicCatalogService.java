@@ -5,6 +5,8 @@ import com.example.booking.dto.PrestationResponse;
 import com.example.booking.dto.ProchaineDispo;
 import com.example.booking.dto.SalonDetailResponse;
 import com.example.booking.dto.SalonResponse;
+import com.example.booking.dto.CreneauDisponible;
+import com.example.booking.dto.CreneauxDuJour;
 import java.time.ZonedDateTime;
 import java.time.LocalTime;
 import java.time.DayOfWeek;
@@ -384,5 +386,41 @@ public class PublicCatalogService {
         void appliquer(SalonDetailResponse r) {
             r.setOuvertMaintenant(ouvert); r.setFermeA(fermeA); r.setOuvreA(ouvreA); r.setOuvreJour(ouvreJour);
         }
+    }
+
+    /**
+     * Qui peut vous recevoir, heure par heure, dans une ville.
+     *
+     * Pour chaque salon actif, les heures de début réellement réservables ce
+     * jour-là pour sa prestation la plus courte — la plus permissive : si
+     * rien ne tient à 16:30, c'est qu'il ne peut vraiment pas vous recevoir.
+     * Tous praticiens confondus. Le résultat est l'union, heure par heure.
+     *
+     * Le coût est celui de N calculs de disponibilité, un par salon ; à
+     * quelques dizaines de salons il reste sous la seconde, et la route est
+     * mise en cache soixante secondes. Au-delà de quelques centaines, il
+     * faudra précalculer — ce jour-là est encore loin.
+     */
+    public CreneauxDuJour creneauxDuJour(String ville, LocalDate date) {
+        List<Salon> actifs = salonRepository.findAll().stream()
+                .filter(s -> s.getStatut() == SalonStatut.ACTIF)
+                .filter(s -> ville == null || ville.isBlank() || ville.equalsIgnoreCase(s.getVille()))
+                .toList();
+
+        java.util.TreeMap<LocalTime, java.util.List<Long>> parHeure = new java.util.TreeMap<>();
+        for (Salon salon : actifs) {
+            Prestation courte = salon.getPrestations().stream()
+                    .filter(Prestation::isActif)
+                    .min(Comparator.comparingInt(Prestation::getDureeMinutes))
+                    .orElse(null);
+            if (courte == null) continue;
+            for (CreneauDisponible c : disponibilites.creneaux(salon.getId(), courte.getId(), date, null)) {
+                parHeure.computeIfAbsent(c.heure(), k -> new java.util.ArrayList<>()).add(salon.getId());
+            }
+        }
+        List<CreneauxDuJour.Heure> heures = parHeure.entrySet().stream()
+                .map(e -> new CreneauxDuJour.Heure(e.getKey(), List.copyOf(e.getValue())))
+                .toList();
+        return new CreneauxDuJour(date, ville, heures);
     }
 }
